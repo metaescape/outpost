@@ -188,7 +188,8 @@ def logcheck(logfiles, old_hist, last):
             old = list(f.readlines())
 
     with open(old_hist, "w", encoding="utf-8") as f:
-        write_to_f_and_list(f"{last} -> {now} 外部简报： \n", f, mail_content)
+        write_to_f_and_list(f"<h2>外部简报</h2> \n", f, mail_content)
+        write_to_f_and_list(f"<p>{last} -> {now}</p>\n", f, mail_content)
         mail_content.extend(motto(cnf))
         if gitnews:
             for line in gitnews:
@@ -200,13 +201,15 @@ def logcheck(logfiles, old_hist, last):
             for ip in attackers:
                 country, city = get_pos_from_ip(ip)
                 write_to_f_and_list(
-                    f"疑似遭遇到 {country} {city} 的 {ip} 的攻击\n", f, mail_content
+                    f"<p>疑似遭遇到 {country} {city} 的 {ip} 的攻击</p>\n",
+                    f,
+                    mail_content,
                 )
         if robots:
             for botname in bot_reduce:
                 cities = ",".join(bot_reduce[botname])
                 write_to_f_and_list(
-                    f"来自 {cities} 的 {botname} 爬取了本站\n", f, mail_content
+                    f"<p>来自 {cities} 的 {botname} 爬取了本站</p>\n", f, mail_content
                 )
         f.write("\n")
         for line in old:

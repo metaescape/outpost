@@ -1,29 +1,35 @@
 import smtplib
 
-# 负责构造文本
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 
 # 负责将多个对象集合起来
 from email.mime.multipart import MIMEMultipart
 from email.header import Header
+from email.mime.application import MIMEApplication
+import os
 
 
-def send_mail(config, body_content="你好，这是一个测试邮件！"):
+def mail_meta(config):
     """
-    发送邮件
+    邮件元数据
     """
     # SMTP服务器,这里使用163邮箱
-    mail_server = config.mail["server"]
-    mail_port = config.mail["port"]
+    server = config.mail["server"]
+    port = config.mail["port"]
     # 发件人邮箱
-    mail_sender = config.mail["sender"]
+    sender = config.mail["sender"]
     # 邮箱授权码,注意这里不是邮箱密码,如何获取邮箱授权码,请看本文最后教程
-    mail_license = config.mail["license"]
+    license = config.mail["license"]
     # 收件人邮箱，可以为多个收件人
-    mail_receivers = config.mail["receivers"]
+    receivers = config.mail["receivers"]
+    html = config.mail["html"]
+    css = config.mail["css"]
+    return server, port, sender, license, receivers, html, css
 
-    mm = MIMEMultipart("related")
+
+def init_mime(config, mail_sender, mail_receivers):
+    mm = MIMEMultipart()
     # 邮件主题
     subject_content = config.mail["subject"]
     # 设置发送者展示信息
@@ -34,26 +40,66 @@ def send_mail(config, body_content="你好，这是一个测试邮件！"):
     )
     # 设置邮件主题
     mm["Subject"] = Header(subject_content, "utf-8")
+    return mm
 
-    # 邮件正文内容
-    # 构造文本,参数1：正文内容，参数2：文本格式，参数3：编码方式
-    message_text = MIMEText(body_content, "plain", "utf-8")
-    # 向MIMEMultipart对象中添加文本对象
-    mm.attach(message_text)
 
+def send_mm(mm, server, port, sender, license, receivers):
     # 创建SMTP对象
     stp = smtplib.SMTP()
     # 设置发件人邮箱的域名和端口
-    stp.connect(mail_server, mail_port)
+    stp.connect(server, port)
     # set_debuglevel(1)可以打印出和SMTP服务器交互的所有信息
     stp.set_debuglevel(1)
     # 登录邮箱，传递参数1：邮箱地址，参数2：邮箱授权码
-    stp.login(mail_sender, mail_license)
+    stp.login(sender, license)
     # 发送邮件，传递参数1：发件人邮箱地址，参数2：收件人邮箱地址，参数3：把邮件内容格式改为str
-    stp.sendmail(mail_sender, mail_receivers, mm.as_string())
+    stp.sendmail(sender, receivers, mm.as_string())
     print("邮件发送成功")
     # 关闭SMTP对象
     stp.quit()
+
+
+def add_html(mm: MIMEMultipart, html: str, css: str, content: str):
+    """
+    将 html 文件添加到邮件中
+    """
+    if os.path.exists(html):
+        with open(html, "r") as html_file:
+            html_content = html_file.read()
+
+        html_content = html_content.format(content)
+        if os.path.exists(css):
+            with open(css, "r") as css_file:
+                css_content = css_file.read()
+
+                html_content = html_content.replace(
+                    "css_placeholder", css_content
+                )
+        else:
+            html_content = html_content.replace("css_placeholder", "")
+
+        mm.attach(MIMEText(html_content, "html", "utf-8"))
+    else:
+        mm.attach(MIMEText(content, "plain", "utf-8"))
+
+
+def add_plain_text(mm, body_content):
+    # 邮件正文内容
+    message_text = MIMEText(body_content, "plain", "utf-8")
+    # 向MIMEMultipart对象中添加文本对象
+    if body_content:
+        mm.attach(message_text)
+
+
+def send_mail(config, content="你好，这是一个测试邮件！"):
+    """
+    发送邮件
+    """
+    (server, port, sender, license, receivers, html, css) = mail_meta(config)
+    mm = init_mime(config, sender, receivers)
+    add_plain_text(mm, "")
+    add_html(mm, html, css, content)
+    send_mm(mm, server, port, sender, license, receivers)
 
 
 if __name__ == "__main__":

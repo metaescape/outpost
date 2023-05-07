@@ -15,4 +15,8 @@ def motto(config):
             for line in f.readlines()
             if line.startswith(config.motto["prefix"])
         ]
-    return random.sample(lines, config.motto["num"])
+    res = ["<h2> 今日格言 </h2> \n"]
+    samples = random.sample(lines, config.motto["num"])
+    for line in samples:
+        res.append(f"<p>{line}</p>\n")
+    return res

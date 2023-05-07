@@ -4,7 +4,7 @@ class Config:
     # 指定网站域名和日志文件地址，其中日志文件地址是必须的
     httpd = {"sitename": "mywebsite", "logfile": "/var/log/httpd/access_log"}
     # 指定每日一言的地址，以及每日一言的数量和前缀，前缀可以是空字符串，只从该文件中选择满足前缀的句子
-    motto = {"path": "motto.org", "nums": 1, "prefix": ":"}
+    motto = {"path": "motto.org", "num": 1, "prefix": ":"}
 
     # 不需要分析的IP， 包括个人电脑的IP和服务器的IP
     # self_ips: 个人电脑的 IP 地址，可以有多个，因为自己可能从不同的地方访问网页
@@ -27,4 +27,6 @@ class Config:
         "subject": "最新报告",
         "from": "tc server <yourname@163.com>",
         "to": "you <yourname@163.com>",
+        "html": "template.html",
+        "css": "style.css",
     }
