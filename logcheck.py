@@ -188,7 +188,7 @@ def logcheck(logfiles, old_hist, last):
             old = list(f.readlines())
 
     with open(old_hist, "w", encoding="utf-8") as f:
-        write_to_f_and_list(f"<h2>外部简报</h2> \n", f, mail_content)
+        write_to_f_and_list(f"<h2>{SITE} 简报</h2> \n", f, mail_content)
         write_to_f_and_list(f"<p>{last} -> {now}</p>\n", f, mail_content)
         mail_content.extend(motto(cnf))
         if gitnews:
@@ -214,6 +214,19 @@ def logcheck(logfiles, old_hist, last):
         f.write("\n")
         for line in old:
             f.write(line)
+
+    if hasattr(cnf, "news"):
+        mail_content.append("<h2>Hacknews 简析</h2>\n")
+        # 新闻分析获取
+        url = cnf.news["url"]
+        data = cnf.news["data"]
+        response = requests.post(url, data=data, stream=True)
+
+        # 处理每一行响应数据
+        for line in response.iter_lines():
+            if line:
+                mail_content.append(f"<p>{line.decode('utf-8')}</p>\n")
+
     send_mail(cnf, "".join(mail_content))
 
 

@@ -2,3 +2,5 @@ config.py
 *.pyc
 loghist.txt
 push.sh
+.vscode/settings.json
+test.html
