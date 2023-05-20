@@ -161,11 +161,11 @@ def logcheck(logfiles, old_hist, last):
                 flag = "初次" if code == "200" else "再次"
                 if refer:
                     content.append(
-                        f"来自 {country} {city} 的 {ip} 从 {refer} {flag} 访问了 {page}\n"
+                        f"<p>来自 {country} {city} 的 {ip} 从 {refer} {flag} 访问了 {page}</p>"
                     )
                 else:
                     content.append(
-                        f"来自 {country} {city} 的 {ip} {flag} 访问了 {page}\n"
+                        f"<p>来自 {country} {city} 的 {ip} {flag} 访问了 {page}</p>"
                     )
 
     # 只保留机器人名称和地点（机器人 ip 随时会换）
