@@ -12,6 +12,7 @@ from config import Config
 from mail import send_mail
 from motto import motto
 import os
+import fnmatch
 
 cnf = Config()
 SITE = cnf.httpd["sitename"]
@@ -109,11 +110,19 @@ def get_success(info):
     return (info["return"] in ["200", "304"]) and (info["method"] == "GET")
 
 
+def match_bot_ip(ip, bots_dict):
+    for pattern, value in bots_dict.items():
+        if fnmatch.fnmatch(ip, pattern):
+            return value
+    return None
+
+
 def logcheck(logfiles, old_hist, last):
     normal_acc = []
     fails = []
     robots = set()
     content = []
+    bots_dict = {"42.236.10.*": "360 spider"}
     if type(logfiles) == str:
         logfiles = [logfiles]
     for logfile in logfiles:
@@ -138,6 +147,10 @@ def logcheck(logfiles, old_hist, last):
                 full_get = get_resource(info["to"]) and "posts" in info["from"]
                 if bot:
                     robots.add((info["ip"], extract_spider_brand(ip_summary)))
+                elif match_bot_ip(info["ip"], bots_dict):
+                    robots.add(
+                        (info["ip"], match_bot_ip(info["ip"], bots_dict))
+                    )
                 elif not success:
                     fails.append(info["ip"])
                 elif out_refer and hit_page:  # success out refer
