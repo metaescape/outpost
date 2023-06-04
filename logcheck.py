@@ -17,7 +17,7 @@ import fnmatch
 cnf = Config()
 SITE = cnf.httpd["sitename"]
 self_ips = cnf.ignore_ips["self_ips"]
-
+BOTS_LOOKUP = {"42.236.10.*": "360 spider"}
 server_ip = cnf.ignore_ips["server_ip"]
 
 
@@ -117,14 +117,40 @@ def match_bot_ip(ip, bots_dict):
     return None
 
 
+def write_to_f_and_list(content, f, lst):
+    f.write(content)
+    lst.append(content)
+
+
+def get_recent_logfiles(logfile, last):
+    # 指定的文件夹路径
+    dir_path = os.path.dirname(logfile)
+    keyword = os.path.basename(logfile)
+    files = []
+    # 遍历文件夹
+    for foldername, subfolders, filenames in os.walk(dir_path):
+        for filename in filenames:
+            file_path = os.path.join(foldername, filename)
+            # 获取文件的修改时间
+            file_time = datetime.datetime.fromtimestamp(
+                os.path.getmtime(file_path)
+            )
+            # 如果文件的修改时间大于指定的时间, 并且关键字 access_log 在文件名中
+            if file_time > last and keyword in file_path:
+                files.append(file_path)
+
+    return files
+
+
 def logcheck(logfiles, old_hist, last):
     normal_acc = []
     fails = []
     robots = set()
     content = []
-    bots_dict = {"42.236.10.*": "360 spider"}
+    attackers = []
+
     if type(logfiles) == str:
-        logfiles = [logfiles]
+        logfiles = get_recent_logfiles(logfiles, last)
     for logfile in logfiles:
         print(f"checking {logfile}")
         with open(logfile, "r", encoding="utf-8") as f:
@@ -147,9 +173,9 @@ def logcheck(logfiles, old_hist, last):
                 full_get = get_resource(info["to"]) and "posts" in info["from"]
                 if bot:
                     robots.add((info["ip"], extract_spider_brand(ip_summary)))
-                elif match_bot_ip(info["ip"], bots_dict):
+                elif match_bot_ip(info["ip"], BOTS_LOOKUP):
                     robots.add(
-                        (info["ip"], match_bot_ip(info["ip"], bots_dict))
+                        (info["ip"], match_bot_ip(info["ip"], BOTS_LOOKUP))
                     )
                 elif not success:
                     fails.append(info["ip"])
@@ -194,7 +220,6 @@ def logcheck(logfiles, old_hist, last):
     last = last.strftime(fmt)
     mail_content = []
     old = []
-    attackers = []
 
     if os.path.exists(old_hist):
         with open(old_hist, "r", encoding="utf-8") as f:
@@ -241,11 +266,6 @@ def logcheck(logfiles, old_hist, last):
                 mail_content.append(f"<p>{line.decode('utf-8')}</p>\n")
 
     send_mail(cnf, "".join(mail_content))
-
-
-def write_to_f_and_list(content, f, lst):
-    f.write(content)
-    lst.append(content)
 
 
 def gitstar(last):
