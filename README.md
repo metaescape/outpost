@@ -1,17 +1,21 @@
 ## Outpost
 
-简要分析 httpd 的日志并且把网站访问信息通过邮件发送, 也可以发送其信息，例如每日提醒，
-格言，新闻等，可以把内容写到 motto.org （或其他指定文件，参考 config_example.py 中选项）中，
-也可以自己用其他服务（例如爬虫）动态把信息写入文件
+outpost 是前哨的意思，主要是搜集互联网信息并通过邮件发送通知。目前功能包括：
 
-环境: python3.6 以上（不依赖第三方 package)
+- 解析 httpd 的日志获得网站访问统计信息
+
+- 每日提醒: 随机从 motto.org （或其他指定文件，参考 config_example.py 中选项）中选择一条或多条
+
+- 新闻：通过简单的 request 爬虫，获取最新感兴趣的新闻，并且调用 AI 服务总结这些新闻。
 
 ## 使用方法：
+
+环境: python3.6 以上（不依赖第三方 package)
 
 先复制一份 config_example.py ，重命名为 config.py ,填写上自己的服务器网站和 ip 信息
 阅读 outpost.serice , 请按实际环境修改其中的 `WorkingDirectory=/root/outpost` 指向改目录实际位置
 
-然后执行一下命令启动服务
+然后执行以下命令启动服务
 
 ```bash
 cp outpost.service /etc/systemd/system/
