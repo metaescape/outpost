@@ -110,6 +110,13 @@ def get_success(info):
     return (info["return"] in ["200", "304"]) and (info["method"] == "GET")
 
 
+def match_ip(ip, patterns):
+    for pattern in patterns:
+        if fnmatch.fnmatch(ip, pattern):
+            return True
+    return False
+
+
 def match_bot_ip(ip, bots_dict):
     for pattern, value in bots_dict.items():
         if fnmatch.fnmatch(ip, pattern):
@@ -193,7 +200,11 @@ def logcheck(logfiles, old_hist, last):
             robots_d = dict(robots)
             no_bot = [x for x in no_att if x[0] not in robots_d]
             for ip, page, refer, code in no_bot:
-                if ip in self_ips or server_ip in refer or server_ip in page:
+                if (
+                    match_ip(ip, self_ips)
+                    or server_ip in refer
+                    or server_ip in page
+                ):
                     # 过滤能从 ip 访问的用户，这基本是自己，或者也是机器人（云服务商之类）
                     continue
                 country, city = get_pos_from_ip(ip)
