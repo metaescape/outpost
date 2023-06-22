@@ -160,7 +160,7 @@ def logcheck(logfiles, old_hist, last):
         logfiles = get_recent_logfiles(logfiles, last)
     for logfile in logfiles:
         print(f"checking {logfile}")
-        with open(logfile, "r", encoding="utf-8") as f:
+        with open(logfile, "r", encoding="utf-8", errors='ignore') as f:
             for line in f.readlines():
                 try:
                     info = parse_httpd_log(line)
