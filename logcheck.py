@@ -13,6 +13,9 @@ from mail import send_mail
 from motto import motto
 import os
 import fnmatch
+import requests
+from bs4 import BeautifulSoup
+import difflib
 
 cnf = Config()
 SITE = cnf.httpd["sitename"]
@@ -150,73 +153,14 @@ def get_recent_logfiles(logfile, last):
 
 
 def logcheck(logfiles, old_hist, last):
-    normal_acc = []
-    fails = []
-    robots = set()
-    content = []
-    attackers = []
-
     if type(logfiles) == str:
         logfiles = get_recent_logfiles(logfiles, last)
-    for logfile in logfiles:
-        print(f"checking {logfile}")
-        with open(logfile, "r", encoding="utf-8", errors='ignore') as f:
-            for line in f.readlines():
-                try:
-                    info = parse_httpd_log(line)
-                except:
-                    continue
-                if info["datetime"] < last:
-                    continue
-                success = get_success(info)
-                ip_summary = info["client"].lower()
-                bot = "bot" in ip_summary or "spider" in ip_summary
-                hit_page = info["to"][-5:] == ".html" or info["to"] == "/"
-                out_refer = (
-                    5 < len(info["from"]) < 100
-                    and "todayad.live" not in info["from"]
-                    and SITE not in info["from"]
-                )
-                full_get = get_resource(info["to"]) and "posts" in info["from"]
-                if bot:
-                    robots.add((info["ip"], extract_spider_brand(ip_summary)))
-                elif match_bot_ip(info["ip"], BOTS_LOOKUP):
-                    robots.add(
-                        (info["ip"], match_bot_ip(info["ip"], BOTS_LOOKUP))
-                    )
-                elif not success:
-                    fails.append(info["ip"])
-                elif out_refer and hit_page:  # success out refer
-                    normal_acc.append(
-                        (info["ip"], info["to"], info["from"], info["return"])
-                    )
-                if (success and not bot) and full_get:
-                    data = (info["ip"], info["from"], "", info["return"])
-                    if normal_acc and data[:2] != normal_acc[-1][:2]:
-                        normal_acc.append(data)
 
-            attackers = [x[0] for x in Counter(fails).items() if x[1] >= 200]
-            no_att = [x for x in set(normal_acc) if x[0] not in attackers]
-            robots_d = dict(robots)
-            no_bot = [x for x in no_att if x[0] not in robots_d]
-            for ip, page, refer, code in no_bot:
-                if (
-                    match_ip(ip, self_ips)
-                    or server_ip in refer
-                    or server_ip in page
-                ):
-                    # 过滤能从 ip 访问的用户，这基本是自己，或者也是机器人（云服务商之类）
-                    continue
-                country, city = get_pos_from_ip(ip)
-                flag = "初次" if code == "200" else "再次"
-                if refer:
-                    content.append(
-                        f"<p>来自 {country} {city} 的 {ip} 从 {refer} {flag} 访问了 {page}</p>"
-                    )
-                else:
-                    content.append(
-                        f"<p>来自 {country} {city} 的 {ip} {flag} 访问了 {page}</p>"
-                    )
+    httpd_info = collect_httpd_log(logfiles, last, True)
+
+    robots = httpd_info["robots"]
+    content = httpd_info["content"]
+    attackers = httpd_info["attackers"]
 
     # 只保留机器人名称和地点（机器人 ip 随时会换）
     bot_reduce = defaultdict(set)
@@ -279,6 +223,127 @@ def logcheck(logfiles, old_hist, last):
     send_mail(cnf, "".join(mail_content))
 
 
+def collect_httpd_log(logfiles, last, get_loc=False):
+    result_dict = {
+        "logfile_status": [],
+        "robots": set(),
+        "normal_acc": [],
+        "content": [],
+        "fails": [],
+        "attackers": [],
+    }
+
+    for logfile in logfiles:
+        result_dict["logfile_status"].append(f"checking {logfile}")
+        with open(logfile, "r", encoding="utf-8", errors="ignore") as f:
+            for line in f.readlines():
+                try:
+                    info = parse_httpd_log(line)
+                except:
+                    continue
+                if info["datetime"] < last:
+                    continue
+                success = get_success(info)
+                ip_summary = info["client"].lower()
+                bot = "bot" in ip_summary or "spider" in ip_summary
+                hit_page = info["to"][-5:] == ".html" or info["to"] == "/"
+                out_refer = (
+                    5 < len(info["from"]) < 100
+                    and "todayad.live" not in info["from"]
+                    and SITE not in info["from"]
+                )
+                full_get = get_resource(info["to"]) and "posts" in info["from"]
+                if bot:
+                    result_dict["robots"].append(
+                        (info["ip"], extract_spider_brand(ip_summary))
+                    )
+                elif match_bot_ip(info["ip"], BOTS_LOOKUP):
+                    result_dict["robots"].add(
+                        (info["ip"], match_bot_ip(info["ip"], BOTS_LOOKUP))
+                    )
+
+                elif not success:
+                    result_dict["fails"].append(info["ip"])
+                elif out_refer and hit_page:
+                    result_dict["normal_acc"].append(
+                        (info["ip"], info["to"], info["from"], info["return"])
+                    )
+                if (success and not bot) and full_get:
+                    data = (info["ip"], info["from"], "", info["return"])
+                    if (
+                        result_dict["normal_acc"]
+                        and data[:2] != result_dict["normal_acc"][-1][:2]
+                    ):
+                        result_dict["normal_acc"].append(data)
+
+            attackers = [
+                x[0]
+                for x in Counter(result_dict["fails"]).items()
+                if x[1] >= 200
+            ]
+            result_dict["attackers"] = attackers
+            no_att = [
+                x
+                for x in set(result_dict["normal_acc"])
+                if x[0] not in attackers
+            ]
+            robots_d = dict(result_dict["robots"])
+            no_bot = [x for x in no_att if x[0] not in robots_d]
+            for ip, page, refer, code in no_bot:
+                if (
+                    match_ip(ip, self_ips)
+                    or server_ip in refer
+                    or server_ip in page
+                ):
+                    continue
+                if get_loc:
+                    country, city = get_pos_from_ip(ip)
+                else:
+                    country, city = "地球", "地球"
+                flag = "初次" if code == "200" else "再次"
+                if "html" in page:
+                    from_loc = f"从 {refer} " if refer else " "
+                    result_dict["content"].append(
+                        f"<p> 来自 {country} {city} 的 {ip}{from_loc}{flag}访问了 {page} </p>"
+                    )
+    return result_dict
+
+
+def check_and_save_html_changes(url, filepath=None):
+    # Fetching content from the URL
+    response = requests.get(url)
+    soup = BeautifulSoup(response.content, "html.parser")
+
+    if not filepath:
+        filepath = "/tmp/" + url.split("/")[-1]
+    # Assuming the main content is under <div class="RichText"> tags, this might change based on the actual HTML structure
+    content = soup.find("div", class_="RichText").text
+
+    # Read the existing file content
+    try:
+        with open(filepath, "r", encoding="utf-8") as file:
+            existing_content = file.read()
+    except FileNotFoundError:
+        existing_content = ""
+
+    # Compare and save if there's a change
+    if content != existing_content:
+        with open(filepath, "w", encoding="utf-8") as file:
+            file.write(content)
+        print("Detected changes and updated the file!")
+
+        # Display the changes
+        diff = difflib.ndiff(
+            existing_content.splitlines(), content.splitlines()
+        )
+        changes = [
+            line
+            for line in diff
+            if line.startswith("+ ") or line.startswith("- ")
+        ]
+        return changes
+
+
 def gitstar(last):
     repos = cnf.git["repos"]
     user = cnf.git["user"]
@@ -306,12 +371,32 @@ def gitstar(last):
     return gitcontent
 
 
-def time_in_range(start, end, x):
+def time_in_range(start, end, x=None):
     """Return true if x is in the range [start, end]"""
+    if not x:
+        x = datetime.datetime.now().time()
     if start <= end:
         return start <= x <= end
     else:
         return start <= x or x <= end
+
+
+def eager_fetch(logfile: str, watch_url, last):
+    mail_content = []
+    httpd_info = collect_httpd_log([logfile], last, True)
+    content = httpd_info["content"]
+    mail_content.extend(content)
+
+    diff = check_and_save_html_changes(watch_url)
+    if diff:
+        mail_content.append("<h2>网页变化</h2>\n")
+        mail_content.extend(diff)
+    if mail_content:
+        fmt = "%Y年%m月%d日%H时%M分"
+        now = datetime.datetime.today().strftime(fmt)
+        cnf.mail["subject"] = f"{now} eager fetch report"
+        send_mail(cnf, "".join(mail_content))
+    print(mail_content)
 
 
 def server():
@@ -320,18 +405,20 @@ def server():
     start8 = datetime.time(start_hour, start_minute, 0)
     end8 = datetime.time(end_hour, end_minute, 0)
     gap = cnf.time["gap"]
+    interval = cnf.time["interval"]
     logfile = cnf.httpd["logfile"]
-    checked = False
+    end_day = datetime.time(23, 45, 0)
     while 1:
-        if checked or time_in_range(
-            start8, end8, datetime.datetime.now().time()
-        ):
+        if time_in_range(start8, end8):
             last = datetime.datetime.today() - timedelta(hours=gap)
             logcheck(logfile, "loghist.txt", last)
-            checked = True
-            time.sleep(60 * 60 * gap)
-        else:
-            time.sleep(60 * 60 * 0.2)
+
+        elif time_in_range(start8, end_day):
+            print("check")
+            last = datetime.datetime.today() - timedelta(hours=interval)
+            eager_fetch("/var/log/httpd/access_log", cnf.watch_url, last)
+            print("send")
+        time.sleep(60 * 60 * interval)
 
 
 def read_all():
@@ -348,13 +435,21 @@ def test():
     logcheck(logfiles, "loghist.txt", last)
 
 
+def test2():
+    gap = 2000
+    last = datetime.datetime.today() - timedelta(hours=gap)
+    logfiles = glob.glob(f"/tmp/access_log*")
+    # return collect_httpd_log(logfiles, last)
+    check_and_save_html_changes("https://zhuanlan.zhihu.com/p/651112449")
+
+
 if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="选择要执行的函数")
     parser.add_argument(
         "--exec",
-        choices=["test", "read_all", "server"],
+        choices=["test", "read_all", "server", "test2"],
         required=True,
         help="要执行的函数名称",
     )
@@ -366,3 +461,5 @@ if __name__ == "__main__":
         read_all()
     elif args.exec == "server":
         server()
+    elif args.exec == "test2":
+        print(test2())

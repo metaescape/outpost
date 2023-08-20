@@ -33,3 +33,9 @@
 : With so much hype, it's easy to get lost marveling at the possibilities, without grasping what quantum computing(deeplearning, CS) actually is. -- brilliant quantum computing
 
 : 对我来说，没有比数学书更难念的了。数百页的书从头到尾念完至难。因为知道"数学" 读懂了，也就成为最简单不过的事而已。所以只年鼎立，努力想了解它。证明就自己想。而在一般情形之下是想不透的，只好看书上的证明。但是读一次两次也不觉得懂，便把证明写在笔记上看看。这回注意到证明有不中意的地方，就想有没有别的证明法？这样子好不容易读完一章时，前面的部分已经忘了。没法子，有从头复习。这回倒在意起整本书章节的排列方式来 -- 小平邦彦
+
+: 认真学习，努力钻研，心无旁鹫，
+
+: 说服自己方案可行，让执行坚定起来
+
+: 当真正执行时，确保每半个小时内就会有一个反馈，而不是在一个大问题上无回馈地做下去.

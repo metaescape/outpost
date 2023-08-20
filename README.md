@@ -10,9 +10,9 @@ outpost 是前哨的意思，主要是搜集互联网信息并通过邮件发送
 
 ## 使用方法：
 
-环境: python3.6 以上（不依赖第三方 package)
+环境: python3.6 以上 (依赖 beautifulsoup4, 用 pip install bs4 安装)
 
-先复制一份 config_example.py ，重命名为 config.py ,填写上自己的服务器网站和 ip 信息
+先复制一份 config_example.py ，重命名为 config.py, 填写上自己的服务器网站和 ip 信息
 阅读 outpost.serice , 请按实际环境修改其中的 `WorkingDirectory=/root/outpost` 指向改目录实际位置
 
 然后执行以下命令启动服务
