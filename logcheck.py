@@ -262,6 +262,7 @@ def self_access(info):
     ):
         return True
     for msg in SELF_AGENT_MSGS:
+        # 区分大小写
         if msg in info["client"]:
             return True
     return False
@@ -358,6 +359,8 @@ def collect_httpd_log(logfiles, last, get_loc=False):
 
 
 def check_and_save_html_changes(url, filepath=None):
+    if not url:
+        return []
     # Fetching content from the URL
     response = requests.get(url)
     soup = BeautifulSoup(response.content, "html.parser")
