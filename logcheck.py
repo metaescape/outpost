@@ -1,24 +1,23 @@
-from datetime import timedelta
 import datetime
-import json
-import time
-import requests
+import difflib
+import fnmatch
 import glob
-from collections import Counter
+import json
+import os
 import re
+import sys
+import time
+from collections import Counter, defaultdict
+from datetime import timedelta
 from operator import itemgetter
-from collections import defaultdict
+from pprint import pprint
+
+import requests
+from bs4 import BeautifulSoup
+
 from config import Config
 from mail import send_mail
 from motto import motto
-import os
-import fnmatch
-import requests
-from bs4 import BeautifulSoup
-import difflib
-import sys
-from pprint import pprint
-
 
 cnf = Config()
 SITE = cnf.httpd["sitename"]
@@ -162,7 +161,7 @@ def full_fetch(logfiles, old_hist, last):
     httpd_info = collect_httpd_log(logfiles, last, True)
 
     robots = httpd_info["robots"]
-    content = httpd_info["content"]
+    httpd_content = httpd_info["content"]
     attackers = httpd_info["attackers"]
 
     # 只保留机器人名称和地点（机器人 ip 随时会换）
@@ -190,8 +189,8 @@ def full_fetch(logfiles, old_hist, last):
         if gitnews:
             for line in gitnews:
                 write_to_f_and_list(line, f, mail_content)
-        if content:
-            for line in content:
+        if httpd_content:
+            for line in httpd_content:
                 write_to_f_and_list(line, f, mail_content)
         if attackers:
             for ip in attackers:
@@ -280,6 +279,9 @@ def is_new_access_ip(info, result_dict):
 
 
 def filter_true_visitors(result_dict, get_loc):
+    """
+    从访问成功的 ip 中过滤掉根据攻击者和机器人 ip, 以免漏网之鱼
+    """
     result_dict["attackers"] = [
         x[0] for x in Counter(result_dict["fails"]).items() if x[1] >= 50
     ]
@@ -305,7 +307,7 @@ def filter_true_visitors(result_dict, get_loc):
         if "html" in access_page:
             from_loc = f"从 {from_link} " if from_link else " "
             result_dict["content"].append(
-                f"<p> 来自 {country} {city} 的 {ip} {from_loc}{freq}访问了 {access_page} </p>"
+                f"<p> 来自 {country} {city} 的 {ip} {from_loc}{freq}访问了 {access_page} </p>\n"
             )
 
 
