@@ -363,7 +363,10 @@ def check_and_save_html_changes(url, filepath=None):
     if not filepath:
         filepath = "/tmp/" + url.split("/")[-1]
     # Assuming the main content is under <div class="RichText"> tags, this might change based on the actual HTML structure
-    content = soup.find("div", class_="RichText").text
+    try:
+        content = soup.find("div", class_="RichText").text
+    except:
+        return [f"{url} 抓取失败"]
 
     # Read the existing file content
     try:
@@ -433,6 +436,7 @@ def time_in_range(start, end, x=None):
 def eager_fetch(logfiles, watch_url, last, test=False):
     """
     尽管叫做 eager_fetch，但是实际上是一个完整的 logcheck 流程，只是用于执行更频繁场景
+    比如对网页的刷新关注
     """
     try:
         mail_content = []
