@@ -438,6 +438,12 @@ def time_in_range(start, end, x=None):
         return start <= x or x <= end
 
 
+def non_oblivious_time():
+    return time_in_range(
+        datetime.time(0, 0, 0), datetime.time(1, 0, 0)
+    ) or time_in_range(datetime.time(8, 0, 0), datetime.time(23, 59, 0))
+
+
 def eager_fetch(logfiles, watch_url, last, test=False):
     """
     尽管叫做 eager_fetch，但是实际上是一个完整的 logcheck 流程，只是用于执行更频繁场景
@@ -496,7 +502,7 @@ def server():
             last = datetime.datetime.today() - timedelta(hours=gap)
             full_fetch(logfile, "loghist.txt", last)
 
-        elif time_in_range(start8, end_day):
+        elif non_oblivious_time():
             last = datetime.datetime.today() - timedelta(hours=interval)
             eager_fetch("/var/log/httpd/access_log", cnf.watch_url, last)
         time.sleep(60 * 60 * interval)
