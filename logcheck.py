@@ -19,6 +19,8 @@ from config import Config
 from mail import send_mail
 from motto import motto
 
+from functools import lru_cache
+
 cnf = Config()
 SITE = cnf.httpd["sitename"]
 BOTS_LOOKUP = cnf.bots_lookup
@@ -56,6 +58,7 @@ def parse_httpd_log(logline):
     return res
 
 
+@lru_cache(maxsize=1024)
 def get_pos_from_ip(ip):
     try:
         url = (
