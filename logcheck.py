@@ -23,7 +23,7 @@ cnf = Config()
 SITE = cnf.httpd["sitename"]
 BOTS_LOOKUP = cnf.bots_lookup
 SELF_IPS = cnf.ignore_ips["self_ips"]
-SERVER_IPS = cnf.ignore_ips["server_ip"]
+SERVER_IPS = cnf.ignore_ips["server_ips"]
 BOTS_LINK_KEYWORDS = cnf.bots_link_keywords
 BOTS_AGENT_KEYWORDS = cnf.bots_agent_keywords
 SELF_AGENT_MSGS = cnf.self_agent_msgs
@@ -247,6 +247,10 @@ def bot_access(info, result_dict):
         if keyword in agent_summary:
             result_dict["robots"].add((info["ip"], keyword))
             return True
+    for ip in SERVER_IPS:
+        if ip in info["to"] or ip in info["from"]:
+            result_dict["robots"].add((info["ip"], f"{ip}"))
+            return True
     return False
 
 
@@ -255,11 +259,7 @@ def self_access(info):
     根据 ip 网段和 agents 信息来过滤是否是自己访问
     不过通过 ip 访问的也很有可能是云服务方的爬虫
     """
-    if (
-        match_ip(info["ip"], SELF_IPS)
-        or SERVER_IPS in info["from"]
-        or SERVER_IPS in info["to"]
-    ):
+    if match_ip(info["ip"], SELF_IPS):
         return True
     for msg in SELF_AGENT_MSGS:
         # 区分大小写
