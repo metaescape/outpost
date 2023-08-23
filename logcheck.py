@@ -286,19 +286,16 @@ def filter_true_visitors(result_dict, get_loc):
     """
     从访问成功的 ip 中过滤掉根据攻击者和机器人 ip, 以免漏网之鱼
     """
-    result_dict["attackers"] = [
+    result_dict["attackers"] = set(
         x[0] for x in Counter(result_dict["fails"]).items() if x[1] >= 50
-    ]
-    # 继续过滤掉漏网的攻击者
-    non_attackers = [
-        x
-        for x in set(result_dict["normal_access"])
-        if x[0] not in result_dict["attackers"]
-    ]
+    )
+
     robots = dict(result_dict["robots"])
-    # 继续过滤掉漏网的爬虫
-    non_robots = [x for x in non_attackers if x[0] not in robots]
-    for ip, access_page, from_link in non_robots:
+
+    for ip, access_page, from_link, date in result_dict["normal_access"]:
+        if ip in result_dict["attackers"] or ip in robots:
+            # 继续过滤掉漏网的攻击者和爬虫
+            continue
         if get_loc:
             country, city = get_pos_from_ip(ip)
         else:
@@ -311,7 +308,7 @@ def filter_true_visitors(result_dict, get_loc):
         if "html" in access_page:
             from_loc = f"从 {from_link} " if from_link else " "
             result_dict["content"].append(
-                f"<p> 来自 {country} {city} 的 {ip} {from_loc}{freq}访问了 {access_page} </p>\n"
+                f"<p> {date} 来自 {country} {city} 的 {ip} {from_loc}{freq}访问了 {access_page} </p>\n"
             )
 
 
@@ -354,6 +351,7 @@ def collect_httpd_log(logfiles, last, get_loc=False):
                             info["ip"],
                             info["to"],
                             info["from"],
+                            info["datetime"],
                         )
                     )
 
