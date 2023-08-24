@@ -174,7 +174,7 @@ def full_fetch(logfiles, old_hist, last):
             country, city = get_pos_from_ip(ip)
             bot_reduce[botname].add(city)
 
-    gitnews = None  # gitstar(last)
+    gitnews = safe_gitstar(last)
     fmt = "%Y年%m月%d日%H时%M分"
     now = datetime.datetime.today().strftime(fmt)
     last = last.strftime(fmt)
@@ -188,7 +188,7 @@ def full_fetch(logfiles, old_hist, last):
     with open(old_hist, "w", encoding="utf-8") as f:
         write_to_f_and_list(f"<h2>{SITE} 简报</h2> \n", f, mail_content)
         write_to_f_and_list(f"<p>{last} -> {now}</p>\n", f, mail_content)
-        gitnews = gitstar(last)
+
         if gitnews:
             for line in gitnews:
                 write_to_f_and_list(line, f, mail_content)
@@ -397,6 +397,15 @@ def check_and_save_html_changes(url, filepath=None):
             if line.startswith("+ ") or line.startswith("- ")
         ]
         return changes
+
+
+def safe_gitstar(last):
+    try:
+        return gitstar(last)
+    except Exception as e:
+        exc_type, exc_value, exc_traceback = sys.exc_info()
+        line_number = exc_traceback.tb_lineno
+        return [f"An error occurred on line {line_number}: {str(e)}"]
 
 
 def gitstar(last):
