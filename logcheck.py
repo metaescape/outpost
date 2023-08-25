@@ -479,8 +479,10 @@ def eager_fetch(logfiles, watch_url, last, test=False):
             if not test:
                 fmt = "%Y年%m月%d日%H时%M分"
                 now = datetime.datetime.today().strftime(fmt)
+                original_subject = cnf.mail["subject"]
                 cnf.mail["subject"] = f"{now} eager fetch report"
                 send_mail(cnf, "".join(mail_content))
+                cnf.mail["subject"] = original_subject
             else:
                 pprint(mail_content)
 
