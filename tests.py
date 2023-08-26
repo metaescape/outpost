@@ -35,11 +35,13 @@ class BasicsTestCase(unittest.TestCase):
         test_cases = [
             "Mozilla/5.0 (compatible; Dataprovider.com)",
             "Mozilla/5.0 (compatible; AhrefsBot/7.0; +http://ahrefs.com/robot/)",
+            "HTTP Banner Detection (https://security.ipip.net)",
         ]
         from logcheck import extract_full_url
 
         assert extract_full_url(test_cases[0]) == "Dataprovider.com"
         assert extract_full_url(test_cases[1]) == "http://ahrefs.com/robot"
+        assert extract_full_url(test_cases[2]) == "https://security.ipip.net"
 
 
 if __name__ == "__main__":

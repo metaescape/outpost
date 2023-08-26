@@ -229,11 +229,13 @@ def full_fetch(logfiles, old_hist, last):
 
 
 def extract_full_url(user_agent: str) -> str:
-    # Use regular expression to match any word that contains '.com' and possibly followed by paths or protocols
-    match = re.search(r"\b(\w+://)?[\w\.-]+\.com[\/\w\.-]*\b", user_agent)
+    # Use regular expression to match any word that contains '.com', '.net', etc., and possibly followed by paths or protocols
+    match = re.search(
+        r"\b(\w+://)?[\w\.-]+\.(com|net|org)[\/\w\.-]*\b", user_agent
+    )
     if match:
         return match.group(0)  # Return the full match
-    return "unk.com"
+    return None
 
 
 def bot_access(info, result_dict):
@@ -250,10 +252,9 @@ def bot_access(info, result_dict):
     if bot:
         result_dict["robots"].add((info["ip"], bot))
         return True
-    if ".com" in agent_summary:
-        result_dict["robots"].add(
-            (info["ip"], extract_full_url(agent_summary))
-        )
+    com = extract_full_url(agent_summary)
+    if com:
+        result_dict["robots"].add((info["ip"], com))
         return True
     for keyword in BOTS_LINK_KEYWORDS:
         if keyword in info["from"]:
