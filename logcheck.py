@@ -228,6 +228,14 @@ def full_fetch(logfiles, old_hist, last):
     send_mail(cnf, "".join(mail_content))
 
 
+def extract_full_url(user_agent: str) -> str:
+    # Use regular expression to match any word that contains '.com' and possibly followed by paths or protocols
+    match = re.search(r"\b(\w+://)?[\w\.-]+\.com[\/\w\.-]*\b", user_agent)
+    if match:
+        return match.group(0)  # Return the full match
+    return "unk.com"
+
+
 def bot_access(info, result_dict):
     """
     从 ip， from 和 agent summary 三个方面过滤爬虫
@@ -241,6 +249,11 @@ def bot_access(info, result_dict):
     bot = match_bot_ip(info["ip"], BOTS_LOOKUP)
     if bot:
         result_dict["robots"].add((info["ip"], bot))
+        return True
+    if ".com" in agent_summary:
+        result_dict["robots"].add(
+            (info["ip"], extract_full_url(agent_summary))
+        )
         return True
     for keyword in BOTS_LINK_KEYWORDS:
         if keyword in info["from"]:

@@ -31,6 +31,16 @@ class BasicsTestCase(unittest.TestCase):
     def test_motto(self):
         pass
 
+    def test_bots(self):
+        test_cases = [
+            "Mozilla/5.0 (compatible; Dataprovider.com)",
+            "Mozilla/5.0 (compatible; AhrefsBot/7.0; +http://ahrefs.com/robot/)",
+        ]
+        from logcheck import extract_full_url
+
+        assert extract_full_url(test_cases[0]) == "Dataprovider.com"
+        assert extract_full_url(test_cases[1]) == "http://ahrefs.com/robot"
+
 
 if __name__ == "__main__":
     logfile = "/var/log/httpd/access_log"
