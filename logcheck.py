@@ -209,18 +209,8 @@ def full_fetch(logfiles, old_hist, last):
 
     httpd_info = collect_httpd_log(logfiles, last, True)
 
-    last_bots_lookup = read_bots_look()
-    # robots is the diff between bots_lookup and last_bots_lookup
-    robots = set(bots_lookup.items()) - set(last_bots_lookup.items())
     httpd_content = httpd_info["content"]
     attackers = httpd_info["attackers"]
-
-    # 只保留机器人名称和地点（机器人 ip 随时会换）
-    bot_reduce = defaultdict(set)
-    if robots:
-        for ip, botname in sorted(robots, key=itemgetter(1)):
-            country, city = get_pos_from_ip(ip)
-            bot_reduce[botname].add(city)
 
     gitnews = safe_gitstar(last)
     fmt = "%Y年%m月%d日%H时%M分"
@@ -251,9 +241,12 @@ def full_fetch(logfiles, old_hist, last):
                     f,
                     mail_content,
                 )
+        last_bots_lookup = read_bots_look()
+        # robots is the diff between bots_lookup and last_bots_lookup
+        robots = dict(set(bots_lookup.items()) - set(last_bots_lookup.items()))
         if robots:
-            for botname in bot_reduce:
-                cities = ",".join(bot_reduce[botname])
+            for botname in robots:
+                cities = ",".join(robots[botname])
                 write_to_f_and_list(
                     f"<p>来自 {cities} 的 {botname} 爬取了本站</p>\n", f, mail_content
                 )
