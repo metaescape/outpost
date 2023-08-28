@@ -5,15 +5,13 @@ import fnmatch
 import glob
 import json
 import os
-import pickle
 import re
 import signal
 import sys
 import time
-from collections import Counter, defaultdict
+from collections import Counter
 from datetime import timedelta
 from functools import lru_cache
-from operator import itemgetter
 from pprint import pprint
 
 import requests
@@ -47,13 +45,15 @@ SELF_AGENT_MSGS = cnf.self_agent_msgs
 
 
 def read_bots_look():
-    # read bots_lookup.pickle from current directory
-    if os.path.exists("bots_lookup.pickle"):
-        with open("bots_lookup.pickle", "rb") as f:
-            bots_lookup = pickle.load(f)
+    # read bots_lookup.json from current directory
+    if os.path.exists("bots_lookup.json"):
+        with open("bots_lookup.json", "r") as f:
+            bots_lookup = json.load(f)
     else:
         bots_lookup = {}
-    bots_lookup.update(cnf.bots_lookup)
+    bots_lookup.update(
+        cnf.bots_lookup
+    )  # Assuming cnf.bots_lookup is another dictionary you want to merge
     return bots_lookup
 
 
@@ -62,9 +62,10 @@ bots_lookup = read_bots_look()
 
 def save_bots_lookup(signum=None, frame=None):
     # update bots_lookup with bots_lookup
+    global bots_lookup
     try:
-        with open("bots_lookup.pickle", "wb") as f:
-            pickle.dump(bots_lookup, f)
+        with open("bots_lookup.json", "w") as f:
+            json.dump(bots_lookup, f, indent=4)  # indent=4 for pretty-printing
     except:
         pass
 
@@ -204,6 +205,7 @@ def get_recent_logfiles(logfile, last):
 
 
 def full_fetch(logfiles, old_hist, last):
+    global bots_lookup
     if type(logfiles) == str:
         logfiles = get_recent_logfiles(logfiles, last)
 
@@ -283,36 +285,41 @@ def bot_access(info):
     """
     从 ip， from 和 agent summary 三个方面过滤爬虫
     """
+    global bots_lookup
+    if "bots_lookup" not in globals():
+        bots_lookup = {}
 
     agent_summary = info["client"].lower()
-    if "bot" in agent_summary or "spider" in agent_summary:
-        bots_lookup.info["ip"] = extract_spider_brand(agent_summary)
-        return True
 
     if match_bot_ip(info["ip"], bots_lookup):
         return True
+
+    if "bot" in agent_summary or "spider" in agent_summary:
+        bots_lookup[info["ip"]] = extract_spider_brand(agent_summary)
+        return True
+
     com = extract_full_url(agent_summary)
     if com is not None:
-        bots_lookup.info["ip"] = com
+        bots_lookup[info["ip"]] = com
         return True
     for keyword in BOTS_LINK_KEYWORDS:
         if keyword in info["from"]:
-            bots_lookup.info["ip"] = keyword
+            bots_lookup[info["ip"]] = keyword
             return True
     for keyword in BOTS_AGENT_KEYWORDS:
         if keyword in agent_summary:
-            bots_lookup.info["ip"] = keyword
+            bots_lookup[info["ip"]] = keyword
             return True
     for keyword in BOTS_ACCESS_KEYWORDS:
         if keyword in info["to"]:
-            bots_lookup.info["ip"] = f"to {keyword} bot"
+            bots_lookup[info["ip"]] = f"to {keyword} bot"
             return True
     for ip in SERVER_IPS:
         if ip in info["to"] or ip in info["from"]:
-            bots_lookup.info["ip"] = f"from {ip}"
+            bots_lookup[info["ip"]] = f"from {ip}"
             return True
     if info["method"] == "POST":
-        bots_lookup.info["ip"] = "POST bot"
+        bots_lookup[info["ip"]] = "POST bot"
         return True
     return False
 
@@ -543,6 +550,7 @@ def eager_fetch(logfiles, watch_url, last, test=False):
                 cnf.mail["subject"] = original_subject
             else:
                 pprint(mail_content)
+                pprint(bots_lookup)
 
     except Exception as e:
         # 如果异常，发邮件提醒
@@ -555,7 +563,7 @@ def eager_fetch(logfiles, watch_url, last, test=False):
                     cnf, f"An error occurred on line {line_number}: {str(e)}"
                 )
         else:
-            pprint(line_number, e)
+            print(line_number, e)
 
 
 def server():
@@ -566,7 +574,6 @@ def server():
     gap = cnf.time["gap"]
     interval = cnf.time["interval"]
     logfile = cnf.httpd["logfile"]
-    end_day = datetime.time(23, 45, 0)
     while 1:
         if time_in_range(start8, end8):
             last = datetime.datetime.today() - timedelta(hours=gap)

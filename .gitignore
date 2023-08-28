@@ -5,3 +5,4 @@ push.sh
 .vscode/settings.json
 test.html
 *.pickle
+*.json
