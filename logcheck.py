@@ -26,11 +26,12 @@ SITE = cnf.httpd["sitename"]
 SELF_IPS = cnf.ignore_ips["self_ips"]
 SERVER_IPS = cnf.ignore_ips["server_ips"]
 BOTS_ACCESS_KEYWORDS = [
-    "c/gi-bin",
+    "/cgi-bin",
     "/manage",
     "/.env",
     "/vendor",
     "/robots.txt",
+    "/config",
 ]
 BOTS_LINK_KEYWORDS = [
     "todayad",
@@ -274,7 +275,7 @@ def full_fetch(logfiles, old_hist, last):
 def extract_full_url(user_agent: str) -> str:
     # Use regular expression to match any word that contains '.com', '.net', etc., and possibly followed by paths or protocols
     match = re.search(
-        r"\b(\w+://)?[\w\.-]+\.(com|net|org)[\/\w\.-]*\b", user_agent
+        r"\b(\w+://)?[\w\.-]+\.(com|net|org|io|cn)[\/\w\.-]*\b", user_agent
     )
     if match:
         return match.group(0)  # Return the full match
