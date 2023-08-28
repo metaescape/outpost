@@ -1,14 +1,18 @@
+import atexit
 import datetime
 import difflib
 import fnmatch
 import glob
 import json
 import os
+import pickle
 import re
+import signal
 import sys
 import time
 from collections import Counter, defaultdict
 from datetime import timedelta
+from functools import lru_cache
 from operator import itemgetter
 from pprint import pprint
 
@@ -19,16 +23,58 @@ from config import Config
 from mail import send_mail
 from motto import motto
 
-from functools import lru_cache
-
 cnf = Config()
 SITE = cnf.httpd["sitename"]
-BOTS_LOOKUP = cnf.bots_lookup
 SELF_IPS = cnf.ignore_ips["self_ips"]
 SERVER_IPS = cnf.ignore_ips["server_ips"]
-BOTS_LINK_KEYWORDS = cnf.bots_link_keywords
-BOTS_AGENT_KEYWORDS = cnf.bots_agent_keywords
+BOTS_ACCESS_KEYWORDS = [
+    "c/gi-bin",
+    "/manage",
+    "/.env",
+    "/vendor",
+    "/robots.txt",
+]
+BOTS_LINK_KEYWORDS = [
+    "todayad",
+    "easyseo",
+]
+BOTS_AGENT_KEYWORDS = [
+    "headless",
+    "python",
+    "selenium",
+]
 SELF_AGENT_MSGS = cnf.self_agent_msgs
+
+
+def read_bots_look():
+    # read bots_lookup.pickle from current directory
+    if os.path.exists("bots_lookup.pickle"):
+        with open("bots_lookup.pickle", "rb") as f:
+            bots_lookup = pickle.load(f)
+    else:
+        bots_lookup = {}
+    bots_lookup.update(cnf.bots_lookup)
+    return bots_lookup
+
+
+bots_lookup = read_bots_look()
+
+
+def save_bots_lookup(signum=None, frame=None):
+    # update bots_lookup with bots_lookup
+    try:
+        with open("bots_lookup.pickle", "wb") as f:
+            pickle.dump(bots_lookup, f)
+    except:
+        pass
+
+
+# 使用atexit注册函数
+atexit.register(save_bots_lookup)
+
+# 使用signal注册函数
+signal.signal(signal.SIGTERM, save_bots_lookup)
+signal.signal(signal.SIGINT, save_bots_lookup)
 
 
 def parse_httpd_log(logline):
@@ -163,7 +209,9 @@ def full_fetch(logfiles, old_hist, last):
 
     httpd_info = collect_httpd_log(logfiles, last, True)
 
-    robots = httpd_info["robots"]
+    last_bots_lookup = read_bots_look()
+    # robots is the diff between bots_lookup and last_bots_lookup
+    robots = set(bots_lookup.items()) - set(last_bots_lookup.items())
     httpd_content = httpd_info["content"]
     attackers = httpd_info["attackers"]
 
@@ -238,36 +286,41 @@ def extract_full_url(user_agent: str) -> str:
     return None
 
 
-def bot_access(info, result_dict):
+def bot_access(info):
     """
     从 ip， from 和 agent summary 三个方面过滤爬虫
     """
+
     agent_summary = info["client"].lower()
     if "bot" in agent_summary or "spider" in agent_summary:
-        result_dict["robots"].add(
-            (info["ip"], extract_spider_brand(agent_summary))
-        )
+        bots_lookup.info["ip"] = extract_spider_brand(agent_summary)
         return True
-    bot = match_bot_ip(info["ip"], BOTS_LOOKUP)
-    if bot:
-        result_dict["robots"].add((info["ip"], bot))
+
+    if match_bot_ip(info["ip"], bots_lookup):
         return True
     com = extract_full_url(agent_summary)
-    if com:
-        result_dict["robots"].add((info["ip"], com))
+    if com is not None:
+        bots_lookup.info["ip"] = com
         return True
     for keyword in BOTS_LINK_KEYWORDS:
         if keyword in info["from"]:
-            result_dict["robots"].add((info["ip"], keyword))
+            bots_lookup.info["ip"] = keyword
             return True
     for keyword in BOTS_AGENT_KEYWORDS:
         if keyword in agent_summary:
-            result_dict["robots"].add((info["ip"], keyword))
+            bots_lookup.info["ip"] = keyword
+            return True
+    for keyword in BOTS_ACCESS_KEYWORDS:
+        if keyword in info["to"]:
+            bots_lookup.info["ip"] = f"to {keyword} bot"
             return True
     for ip in SERVER_IPS:
         if ip in info["to"] or ip in info["from"]:
-            result_dict["robots"].add((info["ip"], f"{ip}"))
+            bots_lookup.info["ip"] = f"from {ip}"
             return True
+    if info["method"] == "POST":
+        bots_lookup.info["ip"] = "POST bot"
+        return True
     return False
 
 
@@ -304,10 +357,8 @@ def filter_true_visitors(result_dict, get_loc):
         x[0] for x in Counter(result_dict["fails"]).items() if x[1] >= 50
     )
 
-    robots = dict(result_dict["robots"])
-
     for ip, access_page, from_link, date in result_dict["normal_access"]:
-        if ip in result_dict["attackers"] or ip in robots:
+        if ip in result_dict["attackers"] or ip in bots_lookup:
             # 继续过滤掉漏网的攻击者和爬虫
             continue
         if get_loc:
@@ -347,11 +398,11 @@ def collect_httpd_log(logfiles, last, get_loc=False):
                     continue
                 if info["datetime"] < last:
                     continue
+                if bot_access(info):
+                    continue
                 if not get_success(info):
                     # a lot of fails from one ip imply potential attackers
                     result_dict["fails"].append(info["ip"])
-                    continue
-                if bot_access(info, result_dict):
                     continue
                 if self_access(info):
                     continue
