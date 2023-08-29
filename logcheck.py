@@ -1,4 +1,5 @@
 import atexit
+from typing import Optional
 import datetime
 import difflib
 import fnmatch
@@ -275,8 +276,8 @@ def full_fetch(logfiles, old_hist, last):
     send_mail(cnf, "".join(mail_content))
 
 
-def extract_full_url(user_agent: str) -> str:
-    # Use regular expression to match any word that contains '.com', '.net', etc., and possibly followed by paths or protocols
+def extract_full_url(user_agent: str) -> Optional[str]:
+    # Use regular expression to match any word that conthttps://github.com/microsoft/pyright/blob/main/docs/configuration.md#reportGeneralTypeIssuesains '.com', '.net', etc., and possibly followed by paths or protocols
     match = re.search(
         r"\b(\w+://)?[\w\.-]+\.(com|net|org|io|cn)[\/\w\.-]*\b", user_agent
     )
@@ -439,7 +440,8 @@ def check_and_save_html_changes(url, filepath=None):
         filepath = "/tmp/" + url.split("/")[-1]
     # Assuming the main content is under <div class="RichText"> tags, this might change based on the actual HTML structure
     try:
-        content = soup.find("div", class_="RichText").text
+        content_div = soup.find("div", class_="RichText")
+        content = content_div.text if content_div else ""
     except:
         return [f"{url} 抓取失败"]
 
@@ -473,7 +475,7 @@ def safe_gitstar(last):
         return gitstar(last)
     except Exception as e:
         exc_type, exc_value, exc_traceback = sys.exc_info()
-        line_number = exc_traceback.tb_lineno
+        line_number = exc_traceback.tb_lineno  # type: ignore
         return [f"An error occurred on line {line_number}: {str(e)}"]
 
 
@@ -492,6 +494,7 @@ def gitstar(last):
             continue
 
         new_stars = []
+        i = 0
         for i, star in enumerate(repo_response.json()):
             star_time = star["starred_at"]
             star_datetime = datetime.datetime.strptime(
@@ -560,7 +563,7 @@ def eager_fetch(logfiles, watch_url, last, test=False):
         # 如果异常，发邮件提醒
         cnf.mail["subject"] = f"eager fetch error: "
         exc_type, exc_value, exc_traceback = sys.exc_info()
-        line_number = exc_traceback.tb_lineno
+        line_number = exc_traceback.tb_lineno  # type: ignore
         if not test:
             if time_in_range(datetime.time(17, 0, 0), datetime.time(21, 0, 0)):
                 send_mail(
