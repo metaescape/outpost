@@ -249,13 +249,16 @@ def full_fetch(logfiles, old_hist, last):
         robots = dict(set(bots_lookup.items()) - set(last_bots_lookup.items()))
         if robots:
             for botname in robots:
-                cities = ",".join(robots[botname])
                 write_to_f_and_list(
-                    f"<p>来自 {cities} 的 {botname} 爬取了本站</p>\n", f, mail_content
+                    f"<p>来自 {robots[botname]} 的 {botname} 爬取了本站</p>\n",
+                    f,
+                    mail_content,
                 )
         f.write("\n")
         for line in old:
             f.write(line)
+
+    save_bots_lookup()
     mail_content.extend(motto(cnf))
     if hasattr(cnf, "news"):
         mail_content.append("<h2>Hacknews 简析</h2>\n")
