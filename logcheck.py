@@ -63,13 +63,20 @@ bots_lookup = read_bots_look()
 
 
 def save_bots_lookup(signum=None, frame=None):
-    # update bots_lookup with bots_lookup
     global bots_lookup
     try:
+        # Sort the dictionary by its values
+        sorted_bots_lookup = {
+            k: v
+            for k, v in sorted(bots_lookup.items(), key=lambda item: item[1])
+        }
+
         with open("bots_lookup.json", "w") as f:
-            json.dump(bots_lookup, f, indent=4)  # indent=4 for pretty-printing
-    except:
-        pass
+            json.dump(
+                sorted_bots_lookup, f, indent=4
+            )  # indent=4 for pretty-printing
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
 
 # 使用atexit注册函数
@@ -251,7 +258,7 @@ def full_fetch(logfiles, old_hist, last):
         if robots:
             for botname in robots:
                 write_to_f_and_list(
-                    f"<p>来自 {robots[botname]} 的 {botname} 爬取了本站</p>\n",
+                    f"<p>新增来自 {robots[botname]} 的 {botname} 爬取了本站</p>\n",
                     f,
                     mail_content,
                 )
@@ -549,10 +556,11 @@ def eager_fetch(logfiles, watch_url, last, test=False):
             mail_content.extend(new_star_msg)
         if mail_content:
             if not test:
-                fmt = "%Y年%m月%d日%H时%M分"
+                fmt = "%Y年%m月%d日%H时%M分:\n"
                 now = datetime.datetime.today().strftime(fmt)
                 original_subject = cnf.mail["subject"]
-                cnf.mail["subject"] = f"{now} eager fetch report"
+                cnf.mail["subject"] = f"eager fetch report"
+                mail_content = [now] + mail_content
                 send_mail(cnf, "".join(mail_content))
                 cnf.mail["subject"] = original_subject
             else:
