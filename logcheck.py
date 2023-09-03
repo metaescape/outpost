@@ -281,6 +281,7 @@ def full_fetch(logfiles, old_hist, last):
                 mail_content.append(f"<p>{line.decode('utf-8')}</p>\n")
 
     send_mail(cnf, "".join(mail_content))
+    return datetime.datetime.today()
 
 
 def extract_full_url(user_agent: str) -> Optional[str]:
@@ -566,6 +567,7 @@ def eager_fetch(logfiles, watch_url, last, test=False):
             else:
                 pprint(mail_content)
                 pprint(bots_lookup)
+        return datetime.datetime.today()
 
     except Exception as e:
         # 如果异常，发邮件提醒
@@ -586,18 +588,29 @@ def server():
     end_hour, end_minute = map(int, cnf.time["end"].split(":"))
     start8 = datetime.time(start_hour, start_minute, 0)
     end8 = datetime.time(end_hour, end_minute, 0)
-    gap = cnf.time["gap"]
-    interval = cnf.time["interval"]
+    full_gap = cnf.time["full_gap"]
+    eager_gap = cnf.time["eager_gap"]
     logfile = cnf.httpd["logfile"]
+    full_last = eager_last = datetime.datetime.today() - timedelta(
+        hours=eager_gap
+    )
     while 1:
         if time_in_range(start8, end8):
-            last = datetime.datetime.today() - timedelta(hours=gap)
-            full_fetch(logfile, "loghist.txt", last)
+            if (
+                datetime.datetime.today() - timedelta(hours=full_gap)
+                > full_last
+            ):
+                full_last = full_fetch(logfile, "loghist.txt", full_last)
 
         elif non_oblivious_time():
-            last = datetime.datetime.today() - timedelta(hours=interval)
-            eager_fetch("/var/log/httpd/access_log", cnf.watch_url, last)
-        time.sleep(60 * 60 * interval)
+            if (
+                datetime.datetime.today() - timedelta(hours=eager_gap)
+                > eager_last
+            ):
+                eager_last = eager_fetch(
+                    "/var/log/httpd/access_log", cnf.watch_url, eager_last
+                )
+        time.sleep(60 * 60 * eager_gap)
 
 
 def read_all():
