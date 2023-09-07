@@ -79,14 +79,6 @@ def save_bots_lookup(signum=None, frame=None):
         print(f"An error occurred: {e}")
 
 
-# 使用atexit注册函数
-atexit.register(save_bots_lookup)
-
-# 使用signal注册函数
-signal.signal(signal.SIGTERM, save_bots_lookup)
-signal.signal(signal.SIGINT, save_bots_lookup)
-
-
 def parse_httpd_log(logline):
     res = {}
     end = logline.find("-") - 1
@@ -484,7 +476,7 @@ def safe_gitstar(last):
     except Exception as e:
         exc_type, exc_value, exc_traceback = sys.exc_info()
         line_number = exc_traceback.tb_lineno  # type: ignore
-        return [f"An error occurred on line {line_number}: {str(e)}"]
+        return [f"Git 仓库信息获取失败于 line {line_number}: {str(e)}"]
 
 
 def gitstar(last):
@@ -552,9 +544,6 @@ def eager_fetch(logfiles, watch_url, last, test=False):
         if diff:
             mail_content.append("<h2>网页变化</h2>\n")
             mail_content.extend(diff)
-        new_star_msg = gitstar(last)
-        if new_star_msg:
-            mail_content.extend(new_star_msg)
         if mail_content:
             if not test:
                 fmt = "%Y年%m月%d日%H时%M分:\n"
@@ -581,9 +570,17 @@ def eager_fetch(logfiles, watch_url, last, test=False):
                 )
         else:
             print(line_number, e)
+        return datetime.datetime.today()
 
 
 def server():
+    # 使用atexit注册函数
+    atexit.register(save_bots_lookup)
+
+    # 使用signal注册函数
+    signal.signal(signal.SIGTERM, save_bots_lookup)
+    signal.signal(signal.SIGINT, save_bots_lookup)
+
     start_hour, start_minute = map(int, cnf.time["start"].split(":"))
     end_hour, end_minute = map(int, cnf.time["end"].split(":"))
     start8 = datetime.time(start_hour, start_minute, 0)
@@ -610,7 +607,7 @@ def server():
                 eager_last = eager_fetch(
                     "/var/log/httpd/access_log", cnf.watch_url, eager_last
                 )
-        time.sleep(60 * 60 * eager_gap)
+        time.sleep(60 * 60 * 0.9)
 
 
 def read_all():
