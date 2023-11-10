@@ -521,6 +521,7 @@ def time_in_range(start, end, x=None):
 
 
 def non_oblivious_time():
+    # 一般清醒时间
     return time_in_range(
         datetime.time(0, 0, 0), datetime.time(1, 0, 0)
     ) or time_in_range(datetime.time(8, 0, 0), datetime.time(23, 59, 0))
@@ -592,6 +593,7 @@ def server():
         hours=eager_gap
     )
     while 1:
+        # 重启之后意味着一般第二天上午会进行一次 full_fetch，然后进入 eager_fetch
         if time_in_range(start8, end8):
             if (
                 datetime.datetime.today() - timedelta(hours=full_gap)
