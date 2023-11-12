@@ -399,7 +399,7 @@ def filter_true_visitors(result_dict, get_loc):
         if ip in visitors_lookup:
             freq = "再次"
         action = "访问"
-        if ip in result_dict["full_visitors"]:
+        if ip not in result_dict["full_visitors"]:
             action = "刷新"
 
         
