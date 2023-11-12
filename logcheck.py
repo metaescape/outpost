@@ -1,5 +1,4 @@
 import atexit
-from typing import Optional
 import datetime
 import difflib
 import fnmatch
@@ -10,10 +9,11 @@ import re
 import signal
 import sys
 import time
-from collections import Counter
+from collections import Counter, defaultdict
 from datetime import timedelta
 from functools import lru_cache
 from pprint import pprint
+from typing import Optional
 
 import requests
 from bs4 import BeautifulSoup
@@ -45,11 +45,14 @@ BOTS_AGENT_KEYWORDS = [
 ]
 SELF_AGENT_MSGS = cnf.self_agent_msgs
 
+BOTS_LOOKUP_PATH = "bots_lookup.json"
+VISITORS_LOOKUP_PATH = "visitors_lookup.json"
 
-def read_bots_look():
+
+def read_bots_lookup():
     # read bots_lookup.json from current directory
-    if os.path.exists("bots_lookup.json"):
-        with open("bots_lookup.json", "r") as f:
+    if os.path.exists(BOTS_LOOKUP_PATH):
+        with open(BOTS_LOOKUP_PATH, "r") as f:
             bots_lookup = json.load(f)
     else:
         bots_lookup = {}
@@ -58,8 +61,18 @@ def read_bots_look():
     )  # Assuming cnf.bots_lookup is another dictionary you want to merge
     return bots_lookup
 
+def read_visitors_lookup():
+    # read visitors_lookup.json from current directory
+    if os.path.exists(VISITORS_LOOKUP_PATH):
+        with open(VISITORS_LOOKUP_PATH, "r") as f:
+            visitors_lookup = json.load(f)
+    else:
+        visitors_lookup = defaultdict(lambda : {"loc":"地球", "cnt": 0 })
+    return visitors_lookup
 
-bots_lookup = read_bots_look()
+
+bots_lookup = read_bots_lookup()
+visitors_lookup = read_visitors_lookup()
 
 
 def save_bots_lookup(signum=None, frame=None):
@@ -71,9 +84,20 @@ def save_bots_lookup(signum=None, frame=None):
             for k, v in sorted(bots_lookup.items(), key=lambda item: item[1])
         }
 
-        with open("bots_lookup.json", "w") as f:
+        with open(BOTS_LOOKUP_PATH, "w") as f:
             json.dump(
                 sorted_bots_lookup, f, indent=4
+            )  # indent=4 for pretty-printing
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+
+def save_visitors_lookup(signum=None, frame=None):
+    global visitors_lookup
+    try:
+        with open(VISITORS_LOOKUP_PATH, "w") as f:
+            json.dump(
+                visitors_lookup, f, indent=4
             )  # indent=4 for pretty-printing
     except Exception as e:
         print(f"An error occurred: {e}")
@@ -244,7 +268,7 @@ def full_fetch(logfiles, old_hist, last):
                     f,
                     mail_content,
                 )
-        last_bots_lookup = read_bots_look()
+        last_bots_lookup = read_bots_lookup()
         # robots is the diff between bots_lookup and last_bots_lookup
         robots = dict(set(bots_lookup.items()) - set(last_bots_lookup.items()))
         if robots:
@@ -258,7 +282,6 @@ def full_fetch(logfiles, old_hist, last):
         for line in old:
             f.write(line)
 
-    save_bots_lookup()
     mail_content.extend(motto(cnf))
     if hasattr(cnf, "news"):
         mail_content.append("<h2>Hacknews 简析</h2>\n")
@@ -361,7 +384,7 @@ def filter_true_visitors(result_dict, get_loc):
     result_dict["attackers"] = set(
         x[0] for x in Counter(result_dict["fails"]).items() if x[1] >= 50
     )
-
+    cnt = 0
     for ip, access_page, from_link, date in result_dict["normal_access"]:
         if ip in result_dict["attackers"] or ip in bots_lookup:
             # 继续过滤掉漏网的攻击者和爬虫
@@ -369,17 +392,28 @@ def filter_true_visitors(result_dict, get_loc):
         if get_loc:
             country, city = get_pos_from_ip(ip)
         else:
-            country, city = "银河系", "漫游中"
+            country, city = "猎户座悬臂", "地球"
 
-        freq = "再次"
+        freq = "初次"
+        if ip in visitors_lookup:
+            freq = "再次"
+        action = "访问"
         if ip in result_dict["full_visitors"]:
-            freq = "初次"
+            action = "刷新"
 
+        
         if "html" in access_page:
+            cnt += 1
             from_loc = f"从 {from_link} " if from_link else " "
             result_dict["content"].append(
-                f"<p> {date} 来自 {country} {city} 的 {ip} {from_loc}{freq}访问了 {access_page} </p>\n"
+                f"<p> {date} 来自 {country} {city} 的 {ip} {from_loc}{freq}{action}了 {access_page} </p>\n"
             )
+            if city != "地球":
+                visitors_lookup[ip]["loc"] = f"{country}:{city}"
+            visitors_lookup[ip]["cnt"] += 1
+    result_dict["content"].append(
+            f"<p> 共 {cnt} 次访问 </p>\n"
+        )
 
 
 def collect_httpd_log(logfiles, last, get_loc=False):
@@ -535,7 +569,7 @@ def eager_fetch(logfiles, watch_url, last, test=False):
     try:
         mail_content = []
         if type(logfiles) == str:
-            logfiles = [logfiles]
+            logfiles = get_recent_logfiles(logfiles, last)
 
         httpd_info = collect_httpd_log(logfiles, last, get_loc=not test)
         content = httpd_info["content"]
@@ -577,10 +611,13 @@ def eager_fetch(logfiles, watch_url, last, test=False):
 def server():
     # 使用atexit注册函数
     atexit.register(save_bots_lookup)
+    atexit.register(save_visitors_lookup)
 
     # 使用signal注册函数
     signal.signal(signal.SIGTERM, save_bots_lookup)
     signal.signal(signal.SIGINT, save_bots_lookup)
+    signal.signal(signal.SIGTERM, save_visitors_lookup)
+    signal.signal(signal.SIGINT, save_visitors_lookup)
 
     start_hour, start_minute = map(int, cnf.time["start"].split(":"))
     end_hour, end_minute = map(int, cnf.time["end"].split(":"))
@@ -593,13 +630,14 @@ def server():
         hours=eager_gap
     )
     while 1:
-        # 重启之后意味着一般第二天上午会进行一次 full_fetch，然后进入 eager_fetch
+        # 重启之后意味着一般第二天上午会进行一次 full_fetch，然后马上进入一次 eager_fetch
         if time_in_range(start8, end8):
             if (
                 datetime.datetime.today() - timedelta(hours=full_gap)
                 > full_last
             ):
-                full_last = full_fetch(logfile, "loghist.txt", full_last)
+                # full_last = full_fetch(logfile, "loghist.txt", full_last)
+                save_bots_lookup()
 
         elif non_oblivious_time():
             if (
@@ -607,7 +645,7 @@ def server():
                 > eager_last
             ):
                 eager_last = eager_fetch(
-                    "/var/log/httpd/access_log", cnf.watch_url, eager_last
+                    logfile, cnf.watch_url, eager_last
                 )
         time.sleep(60 * 60 * 0.9)
 
