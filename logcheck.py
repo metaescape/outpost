@@ -86,7 +86,7 @@ def save_bots_lookup(signum=None, frame=None):
 
         with open(BOTS_LOOKUP_PATH, "w") as f:
             json.dump(
-                sorted_bots_lookup, f, indent=4
+                sorted_bots_lookup, f, indent=4, ensure_ascii=False
             )  # indent=4 for pretty-printing
     except Exception as e:
         print(f"An error occurred: {e}")
@@ -97,7 +97,7 @@ def save_visitors_lookup(signum=None, frame=None):
     try:
         with open(VISITORS_LOOKUP_PATH, "w") as f:
             json.dump(
-                visitors_lookup, f, indent=4
+                visitors_lookup, f, indent=4, ensure_ascii=False
             )  # indent=4 for pretty-printing
     except Exception as e:
         print(f"An error occurred: {e}")
@@ -629,7 +629,9 @@ def server():
     full_last = eager_last = datetime.datetime.today() - timedelta(
         hours=eager_gap
     )
+   
     while 1:
+        
         # 重启之后意味着一般第二天上午会进行一次 full_fetch，然后马上进入一次 eager_fetch
         if time_in_range(start8, end8):
             if (
@@ -640,6 +642,10 @@ def server():
                 save_bots_lookup()
 
         elif non_oblivious_time():
+            # loc 也用来额外保存一些信息，例如上次 eager_fetch 的时间
+            eager_last_str = visitors_lookup["eager_last"]["loc"]
+            if eager_last_str != "地球":
+                eager_last = datetime.datetime.fromisoformat(eager_last_str)
             if (
                 datetime.datetime.today() - timedelta(hours=eager_gap)
                 > eager_last
@@ -647,6 +653,8 @@ def server():
                 eager_last = eager_fetch(
                     logfile, cnf.watch_url, eager_last
                 )
+                visitors_lookup["eager_last"]["loc"] = eager_last.isoformat()
+                visitors_lookup["eager_last"]["cnt"] += 1
         time.sleep(60 * 60 * 0.9)
 
 
