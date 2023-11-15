@@ -190,6 +190,9 @@ def access_static(to):
 def get_success(info):
     return (info["return"] in ["200"]) and (info["method"] == "GET")
 
+def abnormal_access(info):
+    return (info["return"] in ["404", "302"])
+
 
 def match_ip(ip, patterns):
     for pattern in patterns:
@@ -377,6 +380,7 @@ def is_new_access_ip(info, result_dict):
         result_dict["full_visitors"].add(info["ip"])
         return True
 
+import subprocess
 
 def filter_true_visitors(result_dict, get_loc):
     """
@@ -385,6 +389,10 @@ def filter_true_visitors(result_dict, get_loc):
     result_dict["attackers"] = set(
         x[0] for x in Counter(result_dict["fails"]).items() if x[1] >= 50
     )
+    # sudo iptables -A INPUT -s attacker_ip -j DROP
+
+
+    
     cnt = 0
     for ip, access_page, from_link, date in result_dict["normal_access"]:
         if ip in result_dict["attackers"] or ip in bots_lookup:
@@ -412,10 +420,18 @@ def filter_true_visitors(result_dict, get_loc):
             if city != "地球":
                 visitors_lookup[ip]["loc"] = f"{country}:{city}"
             visitors_lookup[ip]["cnt"] += 1
+
+    for ip in result_dict["attackers"]:
+        command = ["sudo", "iptables", "-A", "INPUT", "-s", ip, "-j", "DROP"]
+        subprocess.run(command)
+        result_dict["content"].insert(0, 
+                f"<p> 屏蔽疑似攻击者 {ip} </p>\n"
+            )
     if cnt > 0:
         result_dict["content"].insert(0, 
                 f"<p> 共 {cnt} 次访问 </p>\n"
             )
+    
 
 
 def collect_httpd_log(logfiles, last, get_loc=False):
@@ -432,34 +448,35 @@ def collect_httpd_log(logfiles, last, get_loc=False):
     for logfile in logfiles:
         result_dict["logfile_status"].append(f"checking {logfile}")
         with open(logfile, "r", encoding="utf-8", errors="ignore") as f:
-            for line in f.readlines():
-                try:
-                    info = parse_httpd_log(line)
-                except:
-                    continue
-                if info["datetime"] < last:
-                    continue
-                if bot_access(info):
-                    continue
-                if not get_success(info):
-                    # a lot of fails from one ip imply potential attackers
-                    result_dict["fails"].append(info["ip"])
-                    continue
-                if self_access(info):
-                    continue
-                if is_new_access_ip(info, result_dict):
-                    # collect ips
-                    continue
+            lines = f.readlines()
+        for line in reversed(lines):
+            try:
+                info = parse_httpd_log(line)
+            except:
+                continue
+            if info["datetime"] < last:
+                break
+            if bot_access(info):
+                continue
+            if abnormal_access(info):
+                # a lot of fails from one ip imply potential attackers
+                result_dict["fails"].append(info["ip"])
+                continue
+            if self_access(info):
+                continue
+            if is_new_access_ip(info, result_dict):
+                # collect ips
+                continue
 
-                if info["to"].endswith("html"):
-                    result_dict["normal_access"].append(
-                        (
-                            info["ip"],
-                            info["to"],
-                            info["from"],
-                            info["datetime"],
-                        )
+            if info["to"].endswith("html"):
+                result_dict["normal_access"].append(
+                    (
+                        info["ip"],
+                        info["to"],
+                        info["from"],
+                        info["datetime"],
                     )
+                )
 
     filter_true_visitors(result_dict, get_loc)
     return result_dict
