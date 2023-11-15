@@ -191,7 +191,9 @@ def get_success(info):
     return (info["return"] in ["200"]) and (info["method"] == "GET")
 
 def abnormal_access(info):
-    return (info["return"] in ["404", "302"])
+    return info["return"] in {"404": "not found",
+                              "302": "temporarily moved",
+                              "400": "bad request"}
 
 
 def match_ip(ip, patterns):
@@ -677,7 +679,7 @@ def server():
                 visitors_lookup["eager_last"]["loc"] = eager_last.isoformat()
                 visitors_lookup["eager_last"]["cnt"] += 1
                 
-        time.sleep(60 * 60 * 0.9)
+        time.sleep(60 * 60 * (eager_gap/2) + 100)
 
 
 def read_all():
