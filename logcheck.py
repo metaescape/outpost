@@ -412,9 +412,10 @@ def filter_true_visitors(result_dict, get_loc):
             if city != "地球":
                 visitors_lookup[ip]["loc"] = f"{country}:{city}"
             visitors_lookup[ip]["cnt"] += 1
-    result_dict["content"].append(
-            f"<p> 共 {cnt} 次访问 </p>\n"
-        )
+    if cnt > 0:
+        result_dict["content"].insert(0, 
+                f"<p> 共 {cnt} 次访问 </p>\n"
+            )
 
 
 def collect_httpd_log(logfiles, last, get_loc=False):
