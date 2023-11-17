@@ -7,6 +7,7 @@ import json
 import os
 import re
 import signal
+import subprocess
 import sys
 import time
 from collections import Counter, defaultdict
@@ -382,7 +383,7 @@ def is_new_access_ip(info, result_dict):
         result_dict["full_visitors"].add(info["ip"])
         return True
 
-import subprocess
+
 
 def filter_true_visitors(result_dict, get_loc):
     """
@@ -395,7 +396,7 @@ def filter_true_visitors(result_dict, get_loc):
 
 
     
-    cnt = 0
+    valid_access_set = []
     for ip, access_page, from_link, date in result_dict["normal_access"]:
         if ip in result_dict["attackers"] or ip in bots_lookup:
             # 继续过滤掉漏网的攻击者和爬虫
@@ -414,7 +415,7 @@ def filter_true_visitors(result_dict, get_loc):
 
         
         if "html" in access_page:
-            cnt += 1
+            valid_access_set.append(ip)
             from_loc = f"从 {from_link} " if from_link else " "
             result_dict["content"].append(
                 f"<p> {date} 来自 {country} {city} 的 {ip} {from_loc}{freq}{action}了 {access_page} </p>\n"
@@ -429,9 +430,10 @@ def filter_true_visitors(result_dict, get_loc):
         result_dict["content"].insert(0, 
                 f"<p> 屏蔽疑似攻击者 {ip} </p>\n"
             )
+    cnt = len(valid_access_set)
     if cnt > 0:
         result_dict["content"].insert(0, 
-                f"<p> 共 {cnt} 次访问 </p>\n"
+                f"<p> {len(set(valid_access_set))}/{cnt} 次(唯一)访问 </p>\n"
             )
     
 
