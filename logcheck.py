@@ -660,13 +660,14 @@ def server():
     while 1:
         # 重启之后意味着一般第二天上午会进行一次 full_fetch，然后马上进入一次 eager_fetch
         if time_in_range(start8, end8):
-        #     if (
-        #         datetime.datetime.today() - timedelta(hours=full_gap)
-        #         > full_last
-        #     ):
+            if (
+                datetime.datetime.today() - timedelta(hours=full_gap)
+                > full_last
+            ):
         #         # full_last = full_fetch(logfile, "loghist.txt", full_last)
                 save_bots_lookup()
                 save_visitors_lookup()
+                full_last = datetime.datetime.today()
 
         elif non_oblivious_time():
             # loc 也用来额外保存一些信息，例如上次 eager_fetch 的时间
@@ -681,7 +682,7 @@ def server():
                 visitors_lookup["eager_last"]["loc"] = eager_last.isoformat()
                 visitors_lookup["eager_last"]["cnt"] += 1
                 
-        time.sleep(60 * 60 * (eager_gap/2) + 100)
+        time.sleep(60 * 30) # 30 分钟检查一次
 
 
 def read_all():
