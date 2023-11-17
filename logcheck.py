@@ -397,7 +397,7 @@ def filter_true_visitors(result_dict, get_loc):
 
     
     valid_access_set = []
-    for ip, access_page, from_link, date in result_dict["normal_access"]:
+    for ip, access_page, from_link, date in reversed(result_dict["normal_access"]):
         if ip in result_dict["attackers"] or ip in bots_lookup:
             # 继续过滤掉漏网的攻击者和爬虫
             continue
