@@ -383,7 +383,11 @@ def is_new_access_ip(info, result_dict):
         result_dict["full_visitors"].add(info["ip"])
         return True
 
-
+def from_equal_to(info):
+    """
+    判断是否是命令式刷新，普通访问情况下，from 和 to 是不相等的
+    """
+    return info["from"] == info["to"] or info["from"].endswith(info["to"]) or info["to"].endswith(info["from"])
 
 def filter_true_visitors(result_dict, get_loc):
     """
@@ -435,7 +439,6 @@ def filter_true_visitors(result_dict, get_loc):
         result_dict["content"].insert(0, 
                 f"<p> {len(set(valid_access_set))}/{cnt} 次(唯一)访问 </p>\n"
             )
-    
 
 
 def collect_httpd_log(logfiles, last, get_loc=False):
@@ -470,6 +473,8 @@ def collect_httpd_log(logfiles, last, get_loc=False):
                 continue
             if is_new_access_ip(info, result_dict):
                 # collect ips
+                continue
+            if from_equal_to(info):
                 continue
 
             if info["to"].endswith("html"):
