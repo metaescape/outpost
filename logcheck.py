@@ -389,6 +389,27 @@ def from_equal_to(info):
     """
     return info["from"] == info["to"] or info["from"].endswith(info["to"]) or info["to"].endswith(info["from"])
 
+# 全局变量
+global_visit_count = 0
+last_update_date = None
+
+# 统计函数
+def update_visit_count(valid_access_set,result_dict):
+    global global_visit_count, last_update_date
+
+    current_date = datetime.datetime.now().date()
+    if current_date != last_update_date:
+        global_visit_count = 0
+        last_update_date = current_date
+
+    cnt = len(valid_access_set)
+    global_visit_count += cnt
+
+    if cnt > 0:
+        result_dict["content"].insert(0, 
+            f"<p> {len(set(valid_access_set))}/{cnt}/{global_visit_count}  </p>\n"
+        )
+
 def filter_true_visitors(result_dict, get_loc):
     """
     从访问成功的 ip 中过滤掉根据攻击者和机器人 ip, 以免漏网之鱼
@@ -434,11 +455,8 @@ def filter_true_visitors(result_dict, get_loc):
         result_dict["content"].insert(0, 
                 f"<p> 屏蔽疑似攻击者 {ip} </p>\n"
             )
-    cnt = len(valid_access_set)
-    if cnt > 0:
-        result_dict["content"].insert(0, 
-                f"<p> {len(set(valid_access_set))}/{cnt} 次(唯一)访问 </p>\n"
-            )
+        
+    update_visit_count(valid_access_set,result_dict)
 
 
 def collect_httpd_log(logfiles, last, get_loc=False):
