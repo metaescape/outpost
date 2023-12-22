@@ -403,11 +403,12 @@ def update_visit_count(valid_access_set,result_dict):
         last_update_date = current_date
 
     cnt = len(valid_access_set)
-    global_visit_count += cnt
+    unique_cnt = len(set(valid_access_set))
+    global_visit_count += unique_cnt
 
     if cnt > 0:
         result_dict["content"].insert(0, 
-            f"<p> {len(set(valid_access_set))}/{cnt}/{global_visit_count}  </p>\n"
+            f"<p> {cnt}/{unique_cnt}:{global_visit_count}  </p>\n"
         )
 
 def filter_true_visitors(result_dict, get_loc):
