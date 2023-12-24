@@ -427,6 +427,9 @@ def filter_true_visitors(result_dict, get_loc):
         if ip in result_dict["attackers"] or ip in bots_lookup:
             # 继续过滤掉漏网的攻击者和爬虫
             continue
+        if ip not in result_dict["full_visitors"]:
+            # 过滤掉非资源页访问，大概率是爬虫，少量人为刷新
+            continue
         if get_loc:
             country, city = get_pos_from_ip(ip)
         else:
@@ -435,16 +438,12 @@ def filter_true_visitors(result_dict, get_loc):
         freq = "初次"
         if ip in visitors_lookup:
             freq = "再次"
-        action = "访问"
-        if ip not in result_dict["full_visitors"]:
-            action = "刷新"
 
-        
         if "html" in access_page:
             valid_access_set.append(ip)
             from_loc = f"从 {from_link} " if from_link else " "
             result_dict["content"].append(
-                f"<p> {date} 来自 {country} {city} 的 {ip} {from_loc}{freq}{action}了 {access_page} </p>\n"
+                f"<p> {date} 来自 {country} {city} 的 {ip} {from_loc}{freq}访问了 {access_page} </p>\n"
             )
             if city != "地球":
                 visitors_lookup[ip]["loc"] = f"{country}:{city}"
