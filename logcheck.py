@@ -695,6 +695,7 @@ def server():
     if eager_last_str != "地球":
         eager_last = datetime.datetime.fromisoformat(eager_last_str)
 
+    first = True
     while 1:
         # 重启之后意味着一般第二天上午会进行一次 full_fetch，然后马上进入一次 eager_fetch
         if time_in_range(start8, end8):
@@ -710,13 +711,14 @@ def server():
         if time_in_range(start8, end8) and non_oblivious_time():
             # loc 也用来额外保存一些信息，例如上次 eager_fetch 的时间
             # > 3.7
-            if (
+            if first or (
                 datetime.datetime.today() - timedelta(hours=eager_gap)
                 > eager_last
             ):
                 eager_last = eager_fetch(logfile, cnf.watch_url, eager_last)
                 visitors_lookup["eager_last"]["loc"] = eager_last.isoformat()
                 visitors_lookup["eager_last"]["cnt"] += 1
+                first = False
 
         time.sleep(60 * 30)  # 30 分钟检查一次
 
