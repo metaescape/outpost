@@ -62,14 +62,17 @@ def read_bots_lookup():
     )  # Assuming cnf.bots_lookup is another dictionary you want to merge
     return bots_lookup
 
+
 def read_visitors_lookup():
     # read visitors_lookup.json from current directory
     if os.path.exists(VISITORS_LOOKUP_PATH):
         with open(VISITORS_LOOKUP_PATH, "r") as f:
             visitors_lookup = json.load(f)
-        visitors_lookup = defaultdict(lambda: {"loc": "地球", "cnt": 0}, visitors_lookup)
+        visitors_lookup = defaultdict(
+            lambda: {"loc": "地球", "cnt": 0}, visitors_lookup
+        )
     else:
-        visitors_lookup = defaultdict(lambda : {"loc":"地球", "cnt": 0 })
+        visitors_lookup = defaultdict(lambda: {"loc": "地球", "cnt": 0})
     return visitors_lookup
 
 
@@ -191,10 +194,13 @@ def access_static(to):
 def get_success(info):
     return (info["return"] in ["200"]) and (info["method"] == "GET")
 
+
 def abnormal_access(info):
-    return info["return"] in {"404": "not found",
-                              "302": "temporarily moved",
-                              "400": "bad request"}
+    return info["return"] in {
+        "404": "not found",
+        "302": "temporarily moved",
+        "400": "bad request",
+    }
 
 
 def match_ip(ip, patterns):
@@ -383,18 +389,25 @@ def is_new_access_ip(info, result_dict):
         result_dict["full_visitors"].add(info["ip"])
         return True
 
+
 def from_equal_to(info):
     """
     判断是否是命令式刷新，普通访问情况下，from 和 to 是不相等的
     """
-    return info["from"] == info["to"] or info["from"].endswith(info["to"]) or info["to"].endswith(info["from"])
+    return (
+        info["from"] == info["to"]
+        or info["from"].endswith(info["to"])
+        or info["to"].endswith(info["from"])
+    )
+
 
 # 全局变量
 global_visit_count = 0
 last_update_date = None
 
+
 # 统计函数
-def update_visit_count(valid_access_set,result_dict):
+def update_visit_count(valid_access_set, result_dict):
     global global_visit_count, last_update_date
 
     current_date = datetime.datetime.now().date()
@@ -407,9 +420,10 @@ def update_visit_count(valid_access_set,result_dict):
     global_visit_count += unique_cnt
 
     if cnt > 0:
-        result_dict["content"].insert(0, 
-            f"<p> {cnt}/{unique_cnt}:{global_visit_count}  </p>\n"
+        result_dict["content"].insert(
+            0, f"<p> {cnt}/{unique_cnt}:{global_visit_count}  </p>\n"
         )
+
 
 def filter_true_visitors(result_dict, get_loc):
     """
@@ -420,10 +434,10 @@ def filter_true_visitors(result_dict, get_loc):
     )
     # sudo iptables -A INPUT -s attacker_ip -j DROP
 
-
-    
     valid_access_set = []
-    for ip, access_page, from_link, date in reversed(result_dict["normal_access"]):
+    for ip, access_page, from_link, date in reversed(
+        result_dict["normal_access"]
+    ):
         if ip in result_dict["attackers"] or ip in bots_lookup:
             # 继续过滤掉漏网的攻击者和爬虫
             continue
@@ -452,11 +466,9 @@ def filter_true_visitors(result_dict, get_loc):
     for ip in result_dict["attackers"]:
         command = ["sudo", "iptables", "-A", "INPUT", "-s", ip, "-j", "DROP"]
         subprocess.run(command)
-        result_dict["content"].insert(0, 
-                f"<p> 屏蔽疑似攻击者 {ip} </p>\n"
-            )
-        
-    update_visit_count(valid_access_set,result_dict)
+        result_dict["content"].insert(0, f"<p> 屏蔽疑似攻击者 {ip} </p>\n")
+
+    update_visit_count(valid_access_set, result_dict)
 
 
 def collect_httpd_log(logfiles, last, get_loc=False):
@@ -679,7 +691,7 @@ def server():
     eager_last_str = visitors_lookup["eager_last"]["loc"]
     if eager_last_str != "地球":
         eager_last = datetime.datetime.fromisoformat(eager_last_str)
-   
+
     while 1:
         # 重启之后意味着一般第二天上午会进行一次 full_fetch，然后马上进入一次 eager_fetch
         if time_in_range(start8, end8):
@@ -687,25 +699,23 @@ def server():
                 datetime.datetime.today() - timedelta(hours=full_gap)
                 > full_last
             ):
-        #         # full_last = full_fetch(logfile, "loghist.txt", full_last)
+                #         # full_last = full_fetch(logfile, "loghist.txt", full_last)
                 save_bots_lookup()
                 save_visitors_lookup()
                 full_last = datetime.datetime.today()
 
-        elif non_oblivious_time():
+        if time_in_range(start8, end8) and non_oblivious_time():
             # loc 也用来额外保存一些信息，例如上次 eager_fetch 的时间
             # > 3.7
             if (
                 datetime.datetime.today() - timedelta(hours=eager_gap)
                 > eager_last
             ):
-                eager_last = eager_fetch(
-                    logfile, cnf.watch_url, eager_last
-                )
+                eager_last = eager_fetch(logfile, cnf.watch_url, eager_last)
                 visitors_lookup["eager_last"]["loc"] = eager_last.isoformat()
                 visitors_lookup["eager_last"]["cnt"] += 1
-                
-        time.sleep(60 * 30) # 30 分钟检查一次
+
+        time.sleep(60 * 30)  # 30 分钟检查一次
 
 
 def read_all():
