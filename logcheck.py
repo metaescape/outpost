@@ -720,7 +720,7 @@ def server():
                 visitors_lookup["eager_last"]["cnt"] += 1
                 first = False
 
-        time.sleep(60 * 30)  # 30 分钟检查一次
+        time.sleep(60 * 10)  # 10 分钟检查一次
 
 
 def read_all():
