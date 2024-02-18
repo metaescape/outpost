@@ -48,6 +48,7 @@ SELF_AGENT_MSGS = cnf.self_agent_msgs
 
 BOTS_LOOKUP_PATH = "bots_lookup.json"
 VISITORS_LOOKUP_PATH = "visitors_lookup.json"
+ATTACKERS_THRESHOLD = cnf.attackers_threshold
 
 
 def read_bots_lookup():
@@ -430,7 +431,9 @@ def filter_true_visitors(result_dict, get_loc):
     从访问成功的 ip 中过滤掉根据攻击者和机器人 ip, 以免漏网之鱼
     """
     result_dict["attackers"] = set(
-        x[0] for x in Counter(result_dict["fails"]).items() if x[1] >= 50
+        x[0]
+        for x in Counter(result_dict["fails"]).items()
+        if x[1] >= ATTACKERS_THRESHOLD
     )
     # sudo iptables -A INPUT -s attacker_ip -j DROP
 
