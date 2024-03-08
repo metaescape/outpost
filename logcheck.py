@@ -627,6 +627,7 @@ def eager_fetch(logfiles, watch_url, last, test=False):
     尽管叫做 eager_fetch，但是实际上是一个完整的 logcheck 流程，只是用于执行更频繁场景
     比如对网页的刷新关注
     """
+    new_last_time = datetime.datetime.today()
     try:
         mail_content = []
         if type(logfiles) == str:
@@ -652,7 +653,7 @@ def eager_fetch(logfiles, watch_url, last, test=False):
             else:
                 pprint(mail_content)
                 pprint(bots_lookup)
-        return datetime.datetime.today()
+        return new_last_time
 
     except Exception as e:
         # 如果异常，发邮件提醒
@@ -666,7 +667,7 @@ def eager_fetch(logfiles, watch_url, last, test=False):
                 )
         else:
             print(line_number, e)
-        return datetime.datetime.today()
+        return new_last_time
 
 
 def server():
@@ -691,6 +692,7 @@ def server():
         hours=eager_gap
     )
 
+    # 这里 loc 实际是上一次访问的时间
     eager_last_str = visitors_lookup["eager_last"]["loc"]
     if eager_last_str != "地球":
         eager_last = datetime.datetime.fromisoformat(eager_last_str)
