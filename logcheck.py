@@ -49,6 +49,7 @@ SELF_AGENT_MSGS = cnf.self_agent_msgs
 BOTS_LOOKUP_PATH = "bots_lookup.json"
 VISITORS_LOOKUP_PATH = "visitors_lookup.json"
 TRAFFIC_JSONL = "analysis/traffic.jsonl"
+PAGES_LOC_JSON = "analysis/pages_loc.json"
 ATTACKERS_THRESHOLD = cnf.attackers_threshold
 
 
@@ -76,6 +77,13 @@ def read_visitors_lookup():
     else:
         visitors_lookup = defaultdict(lambda: {"loc": "地球", "cnt": 0})
     return visitors_lookup
+
+
+def read_pages_loc(result_dict):
+    with open(PAGES_LOC_JSON, "r") as f:
+        pages_loc = json.load(f)
+        result_dict["pages"] = pages_loc["pages"]
+        result_dict["locations"] = pages_loc["locations"]
 
 
 bots_lookup = read_bots_lookup()
@@ -383,7 +391,7 @@ def self_access(info):
 
 def is_new_access_ip(info, result_dict):
     """
-    判断当前访问是否访问了资源页，这是确定用户是否是初次访问的证据
+    判断当前访问是否是资源页，这是确定用户是否是初次访问的证据
     """
     if access_static(info["to"]) and (
         info["from"].endswith("html") or info["from"].endswith("/")
@@ -469,9 +477,9 @@ def filter_true_visitors(result_dict, get_loc):
                 visitors_lookup[ip]["loc"] = f"{country}:{city}"
             visitors_lookup[ip]["cnt"] += 1
 
-            # if "categories" not in access_page:
-            #     visitors_lookup[access_page]["cnt"] += 1
-            #     visitors_lookup[access_page]["loc"] = "PAGE"
+            if "categories" not in access_page and "pages" in access_page:
+                result_dict["pages"][access_page] += 1
+                result_dict["locations"][f"{country} {city}"] += 1
 
     for ip in result_dict["attackers"]:
         command = ["sudo", "iptables", "-A", "INPUT", "-s", ip, "-j", "DROP"]
@@ -491,6 +499,11 @@ def collect_httpd_log(logfiles, last, get_loc=False):
         "attackers": [],
         "full_visitors": set(),
     }
+
+    try:
+        read_pages_loc(result_dict)
+    except:
+        result_dict["content"].append("读取 pages_loc.json 失败")
 
     for logfile in logfiles:
         result_dict["logfile_status"].append(f"checking {logfile}")
@@ -622,8 +635,22 @@ def update_traffic_jsonl(result_dict):
             f'["{now_date}", {result_dict["day_cnt"]}, {result_dict["day_unique_cnt"]}]\n'
         )
 
+    if "pages" in result_dict:
+        with open(PAGES_LOC_JSON, "w") as f:
+            pages_loc = {
+                "pages": result_dict["pages"],
+                "locations": result_dict["locations"],
+            }
+            json.dump(pages_loc, f, indent=4, ensure_ascii=False)
+
     # copy to /var/www/html/traffic.jsonl
-    command = ["sudo", "cp", TRAFFIC_JSONL, "/var/www/html/analysis/"]
+    command = [
+        "sudo",
+        "cp",
+        TRAFFIC_JSONL,
+        PAGES_LOC_JSON,
+        "/var/www/html/analysis/",
+    ]
     subprocess.run(command)
 
 

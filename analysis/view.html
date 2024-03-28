@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Site Statistic</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-geo"></script> -->
+
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: "Arial", sans-serif;
+        margin: 20px;
+        color: #333;
+      }
+
+      #total {
+        background-color: #f0f0f0; /* 浅灰色背景 */
+        color: #333; /* 文字颜色 */
+        padding: 10px 20px; /* 内边距 */
+        border-radius: 8px; /* 边角圆滑 */
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* 简单的阴影效果 */
+        display: inline-block; /* 使它不占据整行 */
+        font-size: 16px; /* 字体大小 */
+        display: flex;
+        justify-content: center;
+      }
+
+      #pages-pie-box {
+        margin-top: 3rem;
+        display: flex;
+        justify-content: center;
+        flex-direction: column;
+        height: 100%; /* 或者其他你想要的高度 */
+      }
+      #page-list {
+        max-width: 500px;
+        margin: 0 auto;
+        color: #333;
+      }
+    </style>
+    <style>
+      #passwordPrompt {
+        background-color: #f9f9f9; /* 背景色 */
+        border: 1px solid #ddd; /* 边框 */
+        padding: 20px; /* 内边距 */
+        width: 300px; /* 宽度 */
+        margin: 100px auto; /* 居中显示 */
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* 阴影效果 */
+        border-radius: 5px; /* 边框圆角 */
+      }
+      #passwordPrompt label {
+        font-size: 16px; /* 字体大小 */
+        margin-right: 10px; /* 标签和输入框之间的距离 */
+      }
+      #passwordPrompt input[type="password"] {
+        border: 1px solid #ccc; /* 输入框边框 */
+        padding: 10px; /* 输入框内边距 */
+        border-radius: 4px; /* 输入框边框圆角 */
+      }
+      #passwordPrompt button {
+        background-color: #007bff; /* 按钮背景色 */
+        color: white; /* 按钮文字颜色 */
+        padding: 10px 20px; /* 按钮内边距 */
+        border: none; /* 去除边框 */
+        border-radius: 4px; /* 按钮边框圆角 */
+        cursor: pointer; /* 鼠标悬停效果 */
+        margin-left: 10px; /* 与输入框的距离 */
+      }
+      #passwordPrompt button:hover {
+        background-color: #0056b3; /* 按钮鼠标悬停背景色 */
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="passwordPrompt">
+      <label for="password">请输入访问口令：</label>
+      <input type="password" id="password" />
+      <button onclick="checkPassword()">提交</button>
+    </div>
+    <div id="protectedContent" style="display: none">
+      <p id="total"></p>
+
+      <div style="max-height: 20vh">
+        <canvas id="visits"></canvas>
+      </div>
+
+      <div id="pages-pie-box">
+        <canvas style="max-height: 40vh" id="pages-pie"></canvas>
+        <div>
+          <details id="page-list">
+            <summary>Other pages</summary>
+          </details>
+        </div>
+      </div>
+
+      <div id="geo-box" style="width: 100%; height: 100%">
+        <canvas id="geo"></canvas>
+      </div>
+    </div>
+
+    <script>
+      fetch("traffic.jsonl") // visits per day
+        .then((response) => response.text())
+        .then((data) => {
+          const trafficData = data
+            .split("\n")
+            .filter((line) => line.trim() !== "");
+
+          const dates = [];
+          const visits = [];
+          const uniques = [];
+
+          trafficData.forEach((line) => {
+            const [date, visit, unique] = JSON.parse(line);
+            dates.push(date);
+            visits.push(visit);
+            uniques.push(unique);
+          });
+          const totalVisits = visits.reduce((sum, visit) => sum + visit, 0);
+          const totalUniques = uniques.reduce((sum, unique) => sum + unique, 0);
+
+          const totalInfo = `Total: ${totalVisits}, Total Uniques: ${totalUniques} from ${
+            dates[0]
+          } to ${dates[dates.length - 1]}`;
+          document.getElementById("total").innerText = totalInfo;
+
+          const ctx = document.getElementById("visits").getContext("2d");
+
+          new Chart(ctx, {
+            type: "line",
+            data: {
+              labels: dates,
+              datasets: [
+                {
+                  label: "ips",
+                  data: visits,
+
+                  fill: false,
+                },
+                {
+                  label: "uips",
+                  data: uniques,
+
+                  fill: false,
+                },
+              ],
+            },
+
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              scales: {
+                x: {
+                  ticks: {
+                    display: false, // Hide x-labels on x-ticks
+                  },
+                },
+              },
+            },
+          });
+        })
+        .catch((error) => {
+          console.error("Error:", error);
+        });
+
+      // show pages visits pie
+      fetch("pages_loc.json")
+        .then((response) => response.text())
+        .then((data) => {
+          const { pages, locations } = JSON.parse(data);
+
+          // 将对象转换为数组，并按照访问次数进行排序
+          const entries = Object.entries(pages).sort((a, b) => b[1] - a[1]);
+
+          // 选择前5个元素用于绘制饼图
+          const chartData = entries.slice(0, 5);
+          const labels = chartData.map(([url]) => url);
+          const values = chartData.map(([, count]) => count);
+
+          const ctx_pie = document.getElementById("pages-pie").getContext("2d");
+          new Chart(ctx_pie, {
+            type: "pie",
+            data: {
+              labels: labels,
+              datasets: [
+                {
+                  data: values,
+                },
+              ],
+            },
+          });
+
+          // 剩下的元素以 <p> 标签的形式列出
+          const listElement = document.getElementById("page-list");
+          entries.slice(5).forEach(([url, count]) => {
+            const p = document.createElement("p");
+            p.textContent = `${url}: ${count}`;
+            listElement.appendChild(p);
+          });
+
+          const nameMap = {
+            北京: "Beijing",
+            杭州: "Hangzhou",
+            南京: "Nanjing",
+          };
+
+          // 将数据转换为适合地图的格式
+          const mapData = Object.entries(locations).map(([name, value]) => {
+            const [contryName, cityName] = name.split(" ");
+            const englishName = nameMap[cityName];
+
+            console.log(englishName);
+            return {
+              feature: {
+                id: contryName,
+                properties: {
+                  name: name,
+                },
+              },
+              value: value,
+            };
+          });
+
+          const ctx_geo = document.getElementById("geo").getContext("2d");
+          new Chart(ctx_geo, {
+            type: "choropleth",
+            data: {
+              labels: mapData.map((d) => d.feature.properties.name),
+              datasets: [
+                {
+                  label: "Visits",
+                  data: mapData,
+                  borderColor: "rgba(0,0,0,0.2)",
+                  borderWidth: 1,
+                  hoverBorderWidth: 0,
+                  hoverBorderColor: "rgba(0,0,0,0.2)",
+                  hoverBackgroundColor: "rgba(0,0,0,0.2)",
+                },
+              ],
+            },
+            options: {
+              responsive: true,
+              legend: {
+                display: false,
+              },
+              scale: {
+                projection: "equalEarth",
+              },
+              geo: {
+                colorScale: {
+                  display: true,
+                },
+              },
+            },
+          });
+        })
+        .catch((error) => {
+          console.error("Error:", error);
+        });
+    </script>
+    <script>
+      function checkPassword() {
+        const userPassword = document.getElementById("password").value;
+        const correctPassword = "hugchangelife";
+
+        if (userPassword === correctPassword) {
+          // 密码正确，显示受保护的内容
+          document.getElementById("protectedContent").style.display = "block";
+          document.getElementById("passwordPrompt").style.display = "none";
+        } else {
+          alert("Retry。");
+        }
+      }
+    </script>
+  </body>
+</html>
