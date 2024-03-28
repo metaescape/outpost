@@ -48,6 +48,7 @@ SELF_AGENT_MSGS = cnf.self_agent_msgs
 
 BOTS_LOOKUP_PATH = "bots_lookup.json"
 VISITORS_LOOKUP_PATH = "visitors_lookup.json"
+TRAFFIC_JSONL = "analysis/traffic.jsonl"
 ATTACKERS_THRESHOLD = cnf.attackers_threshold
 
 
@@ -424,6 +425,8 @@ def update_visit_count(valid_access_set, result_dict):
         result_dict["content"].insert(
             0, f"<p> {cnt}/{unique_cnt}:{global_visit_count}  </p>\n"
         )
+    result_dict["day_cnt"] = cnt
+    result_dict["day_unique_cnt"] = unique_cnt
 
 
 def filter_true_visitors(result_dict, get_loc):
@@ -465,6 +468,10 @@ def filter_true_visitors(result_dict, get_loc):
             if city != "地球":
                 visitors_lookup[ip]["loc"] = f"{country}:{city}"
             visitors_lookup[ip]["cnt"] += 1
+
+            # if "categories" not in access_page:
+            #     visitors_lookup[access_page]["cnt"] += 1
+            #     visitors_lookup[access_page]["loc"] = "PAGE"
 
     for ip in result_dict["attackers"]:
         command = ["sudo", "iptables", "-A", "INPUT", "-s", ip, "-j", "DROP"]
@@ -605,6 +612,21 @@ def gitstar(last):
     return gitcontent
 
 
+def update_traffic_jsonl(result_dict):
+    """
+    将 result_dict 中 day_cnt, day_unique_cnt append 到 traffic.jsonl 中
+    """
+    now_date = datetime.datetime.today().strftime("%Y年%m月%d日")
+    with open(TRAFFIC_JSONL, "a") as f:
+        f.write(
+            f'["{now_date}", {result_dict["day_cnt"]}, {result_dict["day_unique_cnt"]}]\n'
+        )
+
+    # copy to /var/www/html/traffic.jsonl
+    command = ["sudo", "cp", TRAFFIC_JSONL, "/var/www/html/analysis/"]
+    subprocess.run(command)
+
+
 def time_in_range(start, end, x=None):
     """Return true if x is in the range [start, end]"""
     if not x:
@@ -636,6 +658,11 @@ def eager_fetch(logfiles, watch_url, last, test=False):
         httpd_info = collect_httpd_log(logfiles, last, get_loc=not test)
         content = httpd_info["content"]
         mail_content.extend(content)
+
+        try:
+            update_traffic_jsonl(httpd_info)
+        except Exception as e:
+            pass
 
         diff = check_and_save_html_changes(watch_url)
         if diff:

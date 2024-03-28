@@ -6,3 +6,4 @@ push.sh
 test.html
 *.pickle
 *.json
+*.jsonl
