@@ -477,7 +477,7 @@ def filter_true_visitors(result_dict, get_loc):
                 visitors_lookup[ip]["loc"] = f"{country}:{city}"
             visitors_lookup[ip]["cnt"] += 1
 
-            if "categories" not in access_page and "pages" in access_page:
+            if "categories" not in access_page and "pages" in result_dict:
                 result_dict["pages"][access_page] += 1
                 result_dict["locations"][f"{country} {city}"] += 1
 
