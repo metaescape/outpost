@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Site Statistic</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-geo"></script> -->
 
     <style>
       * {
@@ -43,6 +42,10 @@
         max-width: 500px;
         margin: 0 auto;
         color: #333;
+      }
+
+      #geo-box {
+        margin-top: 3rem;
       }
     </style>
     <style>
@@ -164,6 +167,12 @@
                   },
                 },
               },
+              plugins: {
+                title: {
+                  display: true,
+                  text: "Visits per Day",
+                },
+              },
             },
           });
         })
@@ -180,8 +189,9 @@
           // 将对象转换为数组，并按照访问次数进行排序
           const entries = Object.entries(pages).sort((a, b) => b[1] - a[1]);
 
-          // 选择前5个元素用于绘制饼图
-          const chartData = entries.slice(0, 5);
+          // 选择前 k 个元素用于绘制饼图
+          const topK = 7;
+          const chartData = entries.slice(0, topK);
           const labels = chartData.map(([url]) => url);
           const values = chartData.map(([, count]) => count);
 
@@ -196,6 +206,14 @@
                 },
               ],
             },
+            options: {
+              plugins: {
+                title: {
+                  display: true,
+                  text: "Visits per Page",
+                },
+              },
+            },
           });
 
           // 剩下的元素以 <p> 标签的形式列出
@@ -206,70 +224,50 @@
             listElement.appendChild(p);
           });
 
-          const nameMap = {
-            北京: "Beijing",
-            杭州: "Hangzhou",
-            南京: "Nanjing",
-          };
+          // sort locations by visits, return top 20 Object { location: count }
 
-          // 将数据转换为适合地图的格式
-          const mapData = Object.entries(locations).map(([name, value]) => {
-            const [contryName, cityName] = name.split(" ");
-            const englishName = nameMap[cityName];
+          const sortedLocations = Object.entries(locations).sort(
+            (a, b) => b[1] - a[1]
+          );
 
-            console.log(englishName);
-            return {
-              feature: {
-                id: contryName,
-                properties: {
-                  name: name,
-                },
-              },
-              value: value,
-            };
-          });
+          const topKLocations = sortedLocations.slice(0, 35);
 
           const ctx_geo = document.getElementById("geo").getContext("2d");
+
           new Chart(ctx_geo, {
-            type: "choropleth",
+            type: "bar",
             data: {
-              labels: mapData.map((d) => d.feature.properties.name),
+              labels: topKLocations.map(([location]) => location.split(" ")[1]),
               datasets: [
                 {
                   label: "Visits",
-                  data: mapData,
-                  borderColor: "rgba(0,0,0,0.2)",
+                  data: topKLocations.map(([, count]) => count),
                   borderWidth: 1,
-                  hoverBorderWidth: 0,
-                  hoverBorderColor: "rgba(0,0,0,0.2)",
-                  hoverBackgroundColor: "rgba(0,0,0,0.2)",
                 },
               ],
             },
             options: {
               responsive: true,
-              legend: {
-                display: false,
+              maintainAspectRatio: false,
+              scales: {
+                y: {
+                  beginAtZero: true,
+                },
               },
-              scale: {
-                projection: "equalEarth",
-              },
-              geo: {
-                colorScale: {
+              plugins: {
+                title: {
                   display: true,
+                  text: "Visits by Location",
                 },
               },
             },
           });
-        })
-        .catch((error) => {
-          console.error("Error:", error);
         });
     </script>
     <script>
       function checkPassword() {
         const userPassword = document.getElementById("password").value;
-        const correctPassword = "hugchangelife";
+        const correctPassword = "hugchange";
 
         if (userPassword === correctPassword) {
           // 密码正确，显示受保护的内容
