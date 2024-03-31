@@ -16,12 +16,32 @@ from functools import lru_cache
 from pprint import pprint
 from typing import Optional
 
+
 import requests
 from bs4 import BeautifulSoup
 
 from config import Config
 from mail import send_mail
 from motto import motto
+
+import logging
+import logging.handlers
+import time
+
+# 创建一个日志记录器
+logger = logging.getLogger("MyLogger")
+logger.setLevel(logging.INFO)
+
+# 创建RotatingFileHandler
+# 这里设置日志文件最大2MB，最多保留5个旧日志文件
+handler = logging.handlers.RotatingFileHandler(
+    "outpost.log", maxBytes=1 * 1024 * 1024, backupCount=2
+)
+formatter = logging.Formatter("%(asctime)s:%(levelname)s:%(message)s")
+handler.setFormatter(formatter)
+
+# 添加处理程序到记录器
+logger.addHandler(handler)
 
 cnf = Config()
 SITE = cnf.httpd["sitename"]
@@ -90,7 +110,7 @@ bots_lookup = read_bots_lookup()
 visitors_lookup = read_visitors_lookup()
 
 
-def save_bots_lookup(signum=None, frame=None):
+def save_bots_lookup():
     global bots_lookup
     try:
         # Sort the dictionary by its values
@@ -107,7 +127,7 @@ def save_bots_lookup(signum=None, frame=None):
         print(f"An error occurred: {e}")
 
 
-def save_visitors_lookup(signum=None, frame=None):
+def save_visitors_lookup():
     global visitors_lookup
     try:
         with open(VISITORS_LOOKUP_PATH, "w") as f:
@@ -478,8 +498,13 @@ def filter_true_visitors(result_dict, get_loc):
             visitors_lookup[ip]["cnt"] += 1
 
             if "categories" not in access_page and "pages" in result_dict:
+                loc = f"{country} {city}"
+                if access_page not in result_dict["pages"]:
+                    result_dict["pages"][access_page] = 0
                 result_dict["pages"][access_page] += 1
-                result_dict["locations"][f"{country} {city}"] += 1
+                if loc not in result_dict["locations"]:
+                    result_dict["locations"][loc] = 0
+                result_dict["locations"][loc] += 1
 
     for ip in result_dict["attackers"]:
         command = ["sudo", "iptables", "-A", "INPUT", "-s", ip, "-j", "DROP"]
@@ -652,6 +677,9 @@ def update_traffic_jsonl(result_dict):
         "/var/www/html/analysis/",
     ]
     subprocess.run(command)
+    logger.info(
+        "traffic.jsonl and pages_loc.json copied to /var/www/html/analysis/"
+    )
 
 
 def time_in_range(start, end, x=None):
@@ -686,10 +714,7 @@ def eager_fetch(logfiles, watch_url, last, test=False):
         content = httpd_info["content"]
         mail_content.extend(content)
 
-        try:
-            update_traffic_jsonl(httpd_info)
-        except Exception as e:
-            pass
+        update_traffic_jsonl(httpd_info)
 
         diff = check_and_save_html_changes(watch_url)
         if diff:
@@ -697,6 +722,7 @@ def eager_fetch(logfiles, watch_url, last, test=False):
             mail_content.extend(diff)
         if mail_content:
             if not test:
+                logger.info("start sending mail")
                 fmt = "%Y年%m月%d日%H时%M分:\n"
                 now = datetime.datetime.today().strftime(fmt)
                 original_subject = cnf.mail["subject"]
@@ -710,30 +736,35 @@ def eager_fetch(logfiles, watch_url, last, test=False):
         return new_last_time
 
     except Exception as e:
+
         # 如果异常，发邮件提醒
         cnf.mail["subject"] = f"eager fetch error: "
         exc_type, exc_value, exc_traceback = sys.exc_info()
         line_number = exc_traceback.tb_lineno  # type: ignore
-        if not test:
-            if time_in_range(datetime.time(17, 0, 0), datetime.time(21, 0, 0)):
-                send_mail(
-                    cnf, f"An error occurred on line {line_number}: {str(e)}"
-                )
-        else:
-            print(line_number, e)
-        return new_last_time
+        logger.error(f"An error occurred on line {line_number}: {str(e)}")
+        return False
+
+
+# c
+def cleanup():
+    logger.info("saving bots_lookup and visitors_lookup table")
+    save_bots_lookup()
+    save_visitors_lookup()
+
+
+def exit_signal_handler(signum, frame):
+    cleanup()
+    logger.info("Received SIGTERM, shutting down server...")
+    sys.exit(0)
 
 
 def server():
-    # 使用atexit注册函数
-    atexit.register(save_bots_lookup)
-    atexit.register(save_visitors_lookup)
+    logger.info("starting logcheck server")
+    atexit.register(cleanup)
 
-    # 使用signal注册函数
-    signal.signal(signal.SIGTERM, save_bots_lookup)
-    signal.signal(signal.SIGINT, save_bots_lookup)
-    signal.signal(signal.SIGTERM, save_visitors_lookup)
-    signal.signal(signal.SIGINT, save_visitors_lookup)
+    # 使用signal注册函数，不需要传递signum和frame，因为atexit不提供它们
+    signal.signal(signal.SIGTERM, exit_signal_handler)
+    signal.signal(signal.SIGINT, exit_signal_handler)
 
     start_hour, start_minute = map(int, cnf.time["start"].split(":"))
     end_hour, end_minute = map(int, cnf.time["end"].split(":"))
@@ -751,30 +782,27 @@ def server():
     if eager_last_str != "地球":
         eager_last = datetime.datetime.fromisoformat(eager_last_str)
 
-    first = True
     while 1:
-        # 重启之后意味着一般第二天上午会进行一次 full_fetch，然后马上进入一次 eager_fetch
-        if time_in_range(start8, end8):
-            if (
-                datetime.datetime.today() - timedelta(hours=full_gap)
-                > full_last
-            ):
-                #         # full_last = full_fetch(logfile, "loghist.txt", full_last)
-                save_bots_lookup()
-                save_visitors_lookup()
-                full_last = datetime.datetime.today()
 
-        if time_in_range(start8, end8) and non_oblivious_time():
+        if time_in_range(start8, end8):
             # loc 也用来额外保存一些信息，例如上次 eager_fetch 的时间
             # > 3.7
-            if first or (
+            if (
                 datetime.datetime.today() - timedelta(hours=eager_gap)
                 > eager_last
             ):
+                logger.info(
+                    f"starting eager fetch with eager_last {eager_last}"
+                )
                 eager_last = eager_fetch(logfile, cnf.watch_url, eager_last)
-                visitors_lookup["eager_last"]["loc"] = eager_last.isoformat()
-                visitors_lookup["eager_last"]["cnt"] += 1
-                first = False
+                if eager_last:  # successful
+                    visitors_lookup["eager_last"][
+                        "loc"
+                    ] = eager_last.isoformat()
+                    visitors_lookup["eager_last"]["cnt"] += 1
+                    logger.info(
+                        f"eager fetch end with new eager_last {eager_last}"
+                    )
 
         time.sleep(60 * 10)  # 10 分钟检查一次
 
@@ -818,7 +846,6 @@ if __name__ == "__main__":
         help="要执行的函数名称",
     )
     args = parser.parse_args()
-
     if args.exec == "test":
         test()
     elif args.exec == "read_all":
