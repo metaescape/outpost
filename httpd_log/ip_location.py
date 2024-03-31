@@ -3,8 +3,9 @@ import json
 import os
 import datetime
 import logging
+from log_config import setup_logging
 
-logger = logging.getLogger(__name__)
+setup_logging()
 
 
 class GeoLocator:
@@ -44,7 +45,7 @@ class GeoLocator:
         try:
             return self.get_location_from_server(ip)
         except Exception as e:
-            logger.error(
+            logging.error(
                 f"Failed to get location for {ip}, using default location."
             )
             return "地球", "地球"

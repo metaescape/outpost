@@ -119,6 +119,34 @@ class BotsHunter:
             return match.group(0)  # Return the full match
         return None
 
+    @staticmethod
+    def is_new_access_ip(ip, from_link, to, result_dict):
+        """
+        判断当前访问是否是资源页，这是确定用户是否是初次访问的证据
+        """
+        if is_access_static_files(to) and (
+            from_link.endswith("html") or from_link.endswith("/")
+        ):
+            result_dict["full_visitors"].add(ip)
+            return True
+
+    @staticmethod
+    def from_equal_to(from_link, to):
+        """
+        判断是否是命令式刷新，普通访问情况下，from 和 to 一般是不相等的，这种情况一般忽略
+        """
+        return (
+            from_link == to or from_link.endswith(to) or to.endswith(from_link)
+        )
+
+    @staticmethod
+    def abnormal_access(return_code):
+        return return_code in {
+            "404": "not found",
+            "302": "temporarily moved",
+            "400": "bad request",
+        }
+
 
 def get_first_word_with_key(key, summary):
     words = re.split("[^a-zA-Z0-9]", summary)
@@ -126,3 +154,13 @@ def get_first_word_with_key(key, summary):
         if key in word and word.find(key) > 0:
             return word
     return None
+
+
+def is_access_static_files(to):
+    """
+    判断是否真的读取了文章，如果真的读取，一般会加载资源，例如 js, css,
+    但由于浏览器缓存，重复访问是不会加载 js,css 的，因此需要加更多判断
+    """
+    return any(
+        ext in to for ext in [".js", ".png", ".jpg", ".gif", ".svg", "themes"]
+    )
