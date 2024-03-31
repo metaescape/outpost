@@ -2,13 +2,10 @@ import unittest
 from unittest.mock import MagicMock, patch
 from httpd_log.ip_location import GeoLocator
 
-from log_config import setup_logging
-
 
 class TestGeoLocator(unittest.TestCase):
     def setUp(self):
         self.geo_locator = GeoLocator()
-        setup_logging()
 
     def test_get_from_cache(self):
         ip = "117.136.55.103"

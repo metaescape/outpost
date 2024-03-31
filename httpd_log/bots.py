@@ -3,8 +3,9 @@ import re
 import os
 import json
 import logging
+from log_config import setup_logging
 
-logger = logging.getLogger(__name__)
+setup_logging()
 
 
 class BotsHunter:
@@ -35,7 +36,7 @@ class BotsHunter:
         # read bots_lookup.json from current directory
         bots_path = os.path.join(os.path.dirname(__file__), "bots_lookup.json")
         if os.path.exists(bots_path):
-            logger.info(f"Loading bots lookup from {bots_path}")
+            logging.info(f"Loading bots lookup from {bots_path}")
             with open(bots_path, "r") as f:
                 self.bots_lookup = json.load(f)
 
