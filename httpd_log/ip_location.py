@@ -1,8 +1,10 @@
 import requests
 import json
-from functools import lru_cache
 import os
 import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class GeoLocator:
@@ -42,6 +44,9 @@ class GeoLocator:
         try:
             return self.get_location_from_server(ip)
         except Exception as e:
+            logger.error(
+                f"Failed to get location for {ip}, using default location."
+            )
             return "地球", "地球"
 
     def get_location_from_server(self, ip):

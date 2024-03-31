@@ -2,10 +2,13 @@ import unittest
 from unittest.mock import MagicMock, patch
 from httpd_log.ip_location import GeoLocator
 
+from log_config import setup_logging
+
 
 class TestGeoLocator(unittest.TestCase):
     def setUp(self):
         self.geo_locator = GeoLocator()
+        setup_logging()
 
     def test_get_from_cache(self):
         ip = "117.136.55.103"
@@ -35,7 +38,7 @@ class TestGeoLocator(unittest.TestCase):
         self.assertEqual(city, expected_city)
 
     def test_get_location_exception(self):
-        ip = "127.0.0.1"
+        ip = "127.0.0.2"
         expected_country = "地球"
         expected_city = "地球"
 
