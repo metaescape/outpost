@@ -9,3 +9,6 @@ test.html
 *.jsonl
 *.txt
 *.org
+__pycache__/
+.mypy_cache/
+*.log
