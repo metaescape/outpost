@@ -1,6 +1,6 @@
 import atexit
 import datetime
-import difflib
+
 import fnmatch
 import glob
 import json
@@ -15,10 +15,11 @@ from datetime import timedelta
 from functools import lru_cache
 from pprint import pprint
 from typing import Optional
+from httpd_log.parser import standard_line_parser
 
 
 import requests
-from bs4 import BeautifulSoup
+
 
 from config import Config
 from mail import send_mail
@@ -138,33 +139,6 @@ def save_visitors_lookup():
         print(f"An error occurred: {e}")
 
 
-def parse_httpd_log(logline):
-    res = {}
-    end = logline.find("-") - 1
-    res["ip"] = logline[:end]
-
-    start = logline.find("[") + 1
-    end = logline.find("]")
-    date = logline[start:end].split()[0]
-    res["datetime"] = datetime.datetime.strptime(date, "%d/%b/%Y:%H:%M:%S")
-
-    start = logline.find(' "') + 2
-    end = logline.find('" ')
-    res["method"], res["to"], res["protocol"] = logline[start:end].split()
-
-    logline = logline[end:]
-    start = logline.find('" ') + 2
-    end = logline.find(' "')
-    res["return"], res["size"] = logline[start:end].split()
-
-    logline = logline[end:]
-    start = logline.find(' "') + 2
-    end = logline.find('" ')
-    res["from"] = logline[start:end]
-    res["client"] = logline[end:]
-    return res
-
-
 @lru_cache(maxsize=1024)
 def get_pos_from_ip(ip):
     try:
@@ -282,7 +256,7 @@ def full_fetch(logfiles, old_hist, last):
     httpd_content = httpd_info["content"]
     attackers = httpd_info["attackers"]
 
-    gitnews = safe_gitstar(last)
+    # gitnews = safe_gitstar(last)
     fmt = "%Y年%m月%d日%H时%M分"
     now = datetime.datetime.today().strftime(fmt)
     last = last.strftime(fmt)
@@ -536,7 +510,7 @@ def collect_httpd_log(logfiles, last, get_loc=False):
             lines = f.readlines()
         for line in reversed(lines):
             try:
-                info = parse_httpd_log(line)
+                info = standard_line_parser(line)
             except:
                 continue
             if info["datetime"] < last:
@@ -567,87 +541,6 @@ def collect_httpd_log(logfiles, last, get_loc=False):
 
     filter_true_visitors(result_dict, get_loc)
     return result_dict
-
-
-def check_and_save_html_changes(url, filepath=None):
-    if not url:
-        return []
-    # Fetching content from the URL
-    response = requests.get(url)
-    soup = BeautifulSoup(response.content, "html.parser")
-
-    if not filepath:
-        filepath = "/tmp/" + url.split("/")[-1]
-    # Assuming the main content is under <div class="RichText"> tags, this might change based on the actual HTML structure
-    try:
-        content_div = soup.find("div", class_="RichText")
-        content = content_div.text if content_div else ""
-    except:
-        return [f"{url} 抓取失败"]
-
-    # Read the existing file content
-    try:
-        with open(filepath, "r", encoding="utf-8") as file:
-            existing_content = file.read()
-    except FileNotFoundError:
-        existing_content = ""
-
-    # Compare and save if there's a change
-    if content != existing_content:
-        with open(filepath, "w", encoding="utf-8") as file:
-            file.write(content)
-        print("Detected changes and updated the file!")
-
-        # Display the changes
-        diff = difflib.ndiff(
-            existing_content.splitlines(), content.splitlines()
-        )
-        changes = [
-            line
-            for line in diff
-            if line.startswith("+ ") or line.startswith("- ")
-        ]
-        return changes
-
-
-def safe_gitstar(last):
-    try:
-        return gitstar(last)
-    except Exception as e:
-        exc_type, exc_value, exc_traceback = sys.exc_info()
-        line_number = exc_traceback.tb_lineno  # type: ignore
-        return [f"Git 仓库信息获取失败于 line {line_number}: {str(e)}"]
-
-
-def gitstar(last):
-    repos = cnf.git["repos"]
-    user = cnf.git["user"]
-    gitcontent = []
-    for repo in repos:
-        url = (
-            f"https://api.github.com/repos/{user}/{repo}/stargazers?per_page=1"
-        )
-        repo_response = requests.get(
-            url, headers={"Accept": "application/vnd.github.v3.star+json"}
-        )
-        if repo_response.status_code != 200:
-            continue
-
-        new_stars = []
-        i = 0
-        for i, star in enumerate(repo_response.json()):
-            star_time = star["starred_at"]
-            star_datetime = datetime.datetime.strptime(
-                star_time, "%Y-%m-%dT%H:%M:%SZ"
-            )
-            user = star["user"]["login"]
-            if star_datetime > last:
-                new_stars.append(user)
-        if new_stars:
-            gitcontent.append(
-                f"{repo} star 新增 {','.join(new_stars)}, 共 {i + 1} star\n"
-            )
-    return gitcontent
 
 
 def update_traffic_jsonl(result_dict):
@@ -716,23 +609,19 @@ def eager_fetch(logfiles, watch_url, last, test=False):
 
         update_traffic_jsonl(httpd_info)
 
-        diff = check_and_save_html_changes(watch_url)
+        # diff = check_and_save_html_changes(watch_url)
         if diff:
             mail_content.append("<h2>网页变化</h2>\n")
             mail_content.extend(diff)
         if mail_content:
-            if not test:
-                logger.info("start sending mail")
-                fmt = "%Y年%m月%d日%H时%M分:\n"
-                now = datetime.datetime.today().strftime(fmt)
-                original_subject = cnf.mail["subject"]
-                cnf.mail["subject"] = f"eager fetch report"
-                mail_content = [now] + mail_content
-                send_mail(cnf, "".join(mail_content))
-                cnf.mail["subject"] = original_subject
-            else:
-                pprint(mail_content)
-                pprint(bots_lookup)
+            logger.info("start sending mail")
+            fmt = "%Y年%m月%d日%H时%M分:\n"
+            now = datetime.datetime.today().strftime(fmt)
+            original_subject = cnf.mail["subject"]
+            cnf.mail["subject"] = f"eager fetch report"
+            mail_content = [now] + mail_content
+            send_mail(cnf, "".join(mail_content))
+            cnf.mail["subject"] = original_subject
         return new_last_time
 
     except Exception as e:
@@ -828,12 +717,6 @@ def test_eager_fetch():
     return eager_fetch(
         logfiles, "https://zhuanlan.zhihu.com/p/651112449", last, test=True
     )
-
-
-def test_gitstar():
-    gap = 2000
-    last = datetime.datetime.today() - timedelta(hours=gap)
-    return gitstar(last)
 
 
 if __name__ == "__main__":
