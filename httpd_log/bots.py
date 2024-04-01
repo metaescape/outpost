@@ -4,6 +4,8 @@ import os
 import json
 import logging
 from log_config import setup_logging
+from collections import Counter
+import subprocess
 
 setup_logging()
 
@@ -32,6 +34,8 @@ class BotsHunter:
         self.config = config
         self.self_ips = config.ignore_ips["self_ips"]
         self.server_ips = config.ignore_ips["server_ips"]
+        self.self_agent_msgs = config.self_agent_msgs
+        self.attackers_threshold = config.attackers_threshold
         self.bots_lookup = {}
         # read bots_lookup.json from current directory
         bots_path = os.path.join(os.path.dirname(__file__), "bots_lookup.json")
@@ -43,6 +47,60 @@ class BotsHunter:
         # the key may be regular expression
         self.user_bots_lookup = config.bots_lookup
 
+    def hunt(self, info, fails: list):
+        """
+        info: an dictionary with keys: ip, from, to, method, agent, return
+        fails: a list to collect failed access ips
+        """
+        ip, from_link, to, method = (
+            info["ip"],
+            info["from"],
+            info["to"],
+            info["method"],
+        )
+        agent_summary, return_code = info["client"], info["return"]
+        if self.is_bot_access(ip, agent_summary, from_link, to, method):
+            return True
+        if self.abnormal_access(return_code):
+            # a lot of fails from one ip imply potential attackers
+            fails.append(ip)
+            return True
+        if self.is_self_access(ip, agent_summary):
+            return True
+
+        if self.from_equal_to(from_link, to):
+            return True
+
+    def find_and_block_attackers(self, fails: list, session):
+        """
+        find attackers from failed access
+        filter out attackers and bots from raw normal visitors
+        use iptables command to block attackers
+        """
+
+        attackers = set(
+            x[0]
+            for x in Counter(fails).items()
+            if x[1] >= self.attackers_threshold
+        )
+        # sudo iptables -A INPUT -s attacker_ip -j DROP
+        for ip in attackers:
+            self.add_bot_ip(ip, "attacker")
+            command = [
+                "sudo",
+                "iptables",
+                "-A",
+                "INPUT",
+                "-s",
+                ip,
+                "-j",
+                "DROP",
+            ]
+
+            subprocess.run(command)
+            logging.info(f"屏蔽疑似攻击者 {ip}")
+            session.add_msg(f"<p> 屏蔽疑似攻击者 {ip} </p>\n")
+
     def match_bot_ip(self, ip):
         if ip in self.bots_lookup:
             return True
@@ -52,46 +110,61 @@ class BotsHunter:
                 return True
         return False
 
-    def is_bot_access(self, ip, client, from_link, to, method):
-        agent_summary = client.lower()
+    def is_recorded_bot(self, ip):
+        return self.match_bot_ip(ip)
 
-        if self.match_bot_ip(ip):
+    def add_bot_ip(self, ip, bot_name):
+        self.bots_lookup[ip] = bot_name
+        return True
+
+    def is_bot_access(self, ip, agent_summary, from_link, to, method):
+        agent_summary = agent_summary.lower()
+
+        if self.is_recorded_bot(ip):
             return True
 
         # 由于 bots dict 只作为查询表,因此可以随时保存,越保存频繁越能检测到
         if "bot" in agent_summary or "spider" in agent_summary:
-            self.bots_lookup[ip] = self.extract_spider_brand(agent_summary)
-            return True
+            return self.add_bot_ip(
+                ip, self.extract_spider_brand(agent_summary)
+            )
 
         com = self.extract_full_url(agent_summary)
         if com is not None:
-            self.bots_lookup[ip] = com
-            return True
+            return self.add_bot_ip(ip, com)
 
         for keyword in self.BOTS_LINK_KEYWORDS:
             if keyword in from_link:
-                self.bots_lookup[ip] = keyword
-                return True
+                return self.add_bot_ip(ip, keyword)
 
         for keyword in self.BOTS_AGENT_KEYWORDS:
             if keyword in agent_summary:
-                self.bots_lookup[ip] = keyword
-                return True
+                return self.add_bot_ip(ip, keyword)
 
         for keyword in self.BOTS_ACCESS_KEYWORDS:
             if keyword in to:
-                self.bots_lookup[ip] = f"to {keyword} bot"
-                return True
+                return self.add_bot_ip(ip, "{keyword} bot")
 
         for ip_address in self.server_ips:
             if ip_address in to or ip_address in from_link:
-                self.bots_lookup[ip] = f"from {ip_address}"
-                return True
+                return self.add_bot_ip(ip, f"from {ip_address}")
 
         if method == "POST":
-            self.bots_lookup[ip] = "POST bot"
-            return True
+            return self.add_bot_ip(ip, "POST bot")
 
+        return False
+
+    def is_self_access(self, ip, agent_summary):
+        """
+        根据 ip 网段和 agents 信息来过滤是否是自己访问
+        不过通过 ip 访问的也很有可能是云服务方的爬虫
+        """
+        if match_ip(ip, self.self_ips):
+            return True
+        for msg in self.self_agent_msgs:
+            # don't use str.lower, because it's case sensitive
+            if msg in agent_summary:
+                return True
         return False
 
     @staticmethod
@@ -120,17 +193,6 @@ class BotsHunter:
         return None
 
     @staticmethod
-    def is_new_access_ip(ip, from_link, to, result_dict):
-        """
-        判断当前访问是否是资源页，这是确定用户是否是初次访问的证据
-        """
-        if is_access_static_files(to) and (
-            from_link.endswith("html") or from_link.endswith("/")
-        ):
-            result_dict["full_visitors"].add(ip)
-            return True
-
-    @staticmethod
     def from_equal_to(from_link, to):
         """
         判断是否是命令式刷新，普通访问情况下，from 和 to 一般是不相等的，这种情况一般忽略
@@ -156,11 +218,8 @@ def get_first_word_with_key(key, summary):
     return None
 
 
-def is_access_static_files(to):
-    """
-    判断是否真的读取了文章，如果真的读取，一般会加载资源，例如 js, css,
-    但由于浏览器缓存，重复访问是不会加载 js,css 的，因此需要加更多判断
-    """
-    return any(
-        ext in to for ext in [".js", ".png", ".jpg", ".gif", ".svg", "themes"]
-    )
+def match_ip(ip, patterns):
+    for pattern in patterns:
+        if fnmatch.fnmatch(ip, pattern):
+            return True
+    return False

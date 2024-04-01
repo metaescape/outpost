@@ -1,5 +1,4 @@
 import unittest
-import os
 from httpd_log.parser import httpd_logfiles, split_session, HttpdLogParser
 import datetime
 
