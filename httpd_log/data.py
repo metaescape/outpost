@@ -3,18 +3,26 @@ import json
 import os
 import datetime
 import logging
-from log_config import setup_logging
+from utils import setup_logging
 from httpd_log.parser import str2datetime
+from utils import DATA_DIR
 
 setup_logging()
 
 
-class GeoLocator:
+class WebTrafficInsights:
+    """
+    作为一个单例类，用于获取ip的地理位置， 同时维护了多个全局字典，作为数据持久缓存
+    - ip2location: 用于存储ip的地理位置信息
+    - location_cnt: 用于存储地理位置来访次数
+    - pages_cnt: 用于存储页面访问次数
+    - from2to: 用于存储从哪个（外部）页面到哪个页面的访问次数
+    """
+
     def __init__(self, access_key="alibaba-inc"):
         self.base_url = "http://ip.taobao.com/outGetIpInfo"
         self.access_key = access_key
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        ip2location_path = os.path.join(current_dir, "ip2location.json")
+        ip2location_path = os.path.join(DATA_DIR, "ip2location.json")
         with open(ip2location_path, "r") as f:
             self.ip2location = json.load(f)
 
@@ -89,5 +97,5 @@ class GeoLocator:
 # add main for manual request
 if __name__ == "__main__":
     # convert_old_json() # only need to run once
-    geo = GeoLocator()
+    geo = WebTrafficInsights()
     print(geo.get_location("153.127.35.18"))

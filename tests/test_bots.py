@@ -81,7 +81,11 @@ class TestBotsHunter(unittest.TestCase):
     @patch("subprocess.run")
     def test_find_and_block_attackers(self, mock_subprocess_run):
         # 模拟失败的访问尝试
-        fails = ["192.168.1.1", "192.168.1.1", "192.168.1.1", "192.168.1.2"]
+        import collections
+
+        fails = collections.Counter(
+            ["192.168.1.1", "192.168.1.1", "192.168.1.1", "192.168.1.2"]
+        )
         self.bots_hunter.attackers_threshold = 3
 
         # 使用MagicMock来模拟session对象

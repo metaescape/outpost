@@ -3,7 +3,7 @@ import re
 import os
 import json
 import logging
-from log_config import setup_logging
+from utils import setup_logging, DATA_DIR
 from collections import Counter
 import subprocess
 
@@ -38,7 +38,7 @@ class BotsHunter:
         self.attackers_threshold = config.attackers_threshold
         self.bots_lookup = {}
         # read bots_lookup.json from current directory
-        bots_path = os.path.join(os.path.dirname(__file__), "bots_lookup.json")
+        bots_path = os.path.join(DATA_DIR, "bots_lookup.json")
         if os.path.exists(bots_path):
             logging.info(f"Loading bots lookup from {bots_path}")
             with open(bots_path, "r") as f:

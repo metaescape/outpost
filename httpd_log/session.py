@@ -1,5 +1,5 @@
 from httpd_log.bots import BotsHunter
-from httpd_log.ip_location import GeoLocator
+from httpd_log.data import WebTrafficInsights
 from collections import defaultdict, Counter
 import os
 
@@ -24,7 +24,7 @@ class SessionAnalyzer:
         self.end_time = session["range"][1]
         self.is_full = session["is_full"]
 
-        self.geolocator = GeoLocator()
+        self.geolocator = WebTrafficInsights()
         self.bot_hunter = BotsHunter(config)
 
         self.session_data = {
@@ -151,6 +151,10 @@ class SessionAnalyzer:
     def merge_ip2location(self):
 
         self.geolocator.merge_table(self.session_data["ip2location"])
+
+    def merge_pages_loc(self):
+        # ip2location, pages, locations all need to be merged
+        self.geolocator.merge_table(self.session_data["pages"])
 
 
 def is_access_static_files(to):

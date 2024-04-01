@@ -2,6 +2,9 @@ import logging
 import logging.handlers
 import os
 
+PORJ_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = os.path.join(PORJ_DIR, "analysis")
+
 
 def setup_logging():
 
