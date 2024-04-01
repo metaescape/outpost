@@ -1,5 +1,11 @@
 import unittest
-from httpd_log.parser import httpd_logfiles, split_session, HttpdLogParser
+from httpd_log.parser import (
+    httpd_logfiles,
+    split_session,
+    HttpdLogParser,
+    str2datetime,
+    datetime2str,
+)
 import datetime
 
 
@@ -92,6 +98,34 @@ class TestParser(unittest.TestCase):
         self.assertEqual(len(sessions), 2)
         self.assertGreater(len(sessions[0]["loglines"]), 500)
         self.assertGreater(len(sessions[1]["loglines"]), 100)
+
+    def test_datetime_conversion(self):
+        # 设置测试用的datetime对象
+        test_datetime = datetime.datetime(2024, 1, 31, 12, 49, 43)
+
+        datetime_str = datetime2str(test_datetime)
+        self.assertEqual(datetime_str, "2024-01-31T12:49:43")
+
+        # 测试默认情况
+        converted_datetime = str2datetime(datetime_str)
+        self.assertEqual(converted_datetime, test_datetime)
+
+        # 测试httpd默认格式的情况
+        test_datetime_str_httpd = "31/Jan/2024:12:49:43"
+        converted_datetime_httpd = str2datetime(
+            test_datetime_str_httpd, httpd_default=True
+        )
+
+        self.assertEqual(converted_datetime_httpd, test_datetime)
+
+        test_datetime = datetime.datetime(2024, 1, 31, 12, 49, 43)
+        self.assertEqual(
+            datetime2str(test_datetime, only_date=True), "2024-01-31"
+        )
+
+        test_string = "2024-01-31T12:49:43"
+        expected_datetime = datetime.datetime(2024, 1, 31, 12, 49, 43)
+        self.assertEqual(str2datetime(test_string), expected_datetime)
 
 
 if __name__ == "__main__":

@@ -75,8 +75,8 @@ class HttpdLogParser:
 
         start = logline.find("[") + 1
         end = logline.find("]")
-        date = logline[start:end].split()[0]
-        res["datetime"] = datetime.datetime.strptime(date, "%d/%b/%Y:%H:%M:%S")
+        date_str = logline[start:end].split()[0]
+        res["datetime"] = str2datetime(date_str, httpd_default=True)
 
         start = logline.find(' "') + 2
         end = logline.find('" ')
@@ -148,5 +148,22 @@ def split_session(start_time, end_time, days=1):
     return session_list
 
 
-def file_parser():
-    pass
+def datetime2str(date_time=None, only_date=False):
+    """
+    convert datetime to  str format like "2024-01-31T12:49:43"
+    """
+    if date_time is None:
+        date_time = datetime.datetime.today()
+    if only_date:
+        return date_time.strftime("%Y-%m-%d")
+    return date_time.strftime("%Y-%m-%dT%H:%M:%S")
+
+
+def str2datetime(string, httpd_default=False):
+    """
+    convert str format like "2024-01-31T12:49:43" to datetime object
+
+    """
+    if httpd_default:
+        return datetime.datetime.strptime(string, "%d/%b/%Y:%H:%M:%S")
+    return datetime.datetime.strptime(string, "%Y-%m-%dT%H:%M:%S")

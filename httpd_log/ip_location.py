@@ -4,6 +4,7 @@ import os
 import datetime
 import logging
 from log_config import setup_logging
+from httpd_log.parser import str2datetime
 
 setup_logging()
 
@@ -19,6 +20,10 @@ class GeoLocator:
 
         self.session_dict = {}
 
+    # magic conatins
+    def __contains__(self, ip):
+        return ip in self.ip2location
+
     def get_from_cache(self, ip):
         # check if the ip is in the ip2location and is not out of date and
         # the location is not "地球"
@@ -26,14 +31,12 @@ class GeoLocator:
             return None
         last_datetime_str = self.ip2location[ip][-1]
         # convert last_datetime_str like "2024-01-31T12:49:43" to datetime
-        last_datetime = datetime.datetime.strptime(
-            last_datetime_str, "%Y-%m-%dT%H:%M:%S"
-        )
+        last_datetime = str2datetime(last_datetime_str)
         now = datetime.datetime.now()
         if now - last_datetime > datetime.timedelta(days=180):  # out of date
             return None
         location = self.ip2location[ip][0]
-        if "地球" in location:
+        if "地球" in location or "猎户" in location:
             return None
         return tuple(location.split(":"))
 
