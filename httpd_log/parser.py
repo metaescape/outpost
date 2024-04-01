@@ -28,18 +28,8 @@ class HttpdLogParser:
         return sessions
 
     def parse_loglines_after_datetime(self):
-        files = self.filter_files_by_datetime()
-        # separate access_log to access_log-timestamp
+        files_from_new_to_old = self.filter_files_by_datetime()
 
-        backup_files, current_files = [], []
-        for file in files:
-            if file.endswith("access_log"):
-                current_files.append(file)
-            else:
-                backup_files.append(file)
-        files_from_new_to_old = current_files + sorted(
-            backup_files, reverse=True
-        )
         loglines = []
         for file in files_from_new_to_old:
             with open(file, "r", encoding="utf-8", errors="ignore") as f:
@@ -52,8 +42,17 @@ class HttpdLogParser:
 
     def filter_files_by_datetime(self):
         all_files = httpd_logfiles(self.log_dir)
+        backup_files, current_files = [], []
         filtered_files = get_files_after_datetime(all_files, self.start_time)
-        return filtered_files
+        for file in filtered_files:
+            if file.endswith("access_log"):
+                current_files.append(file)
+            else:
+                backup_files.append(file)
+        files_from_new_to_old = current_files + sorted(
+            backup_files, reverse=True
+        )
+        return files_from_new_to_old
 
     def safe_parse_line(self, line):
         try:

@@ -63,6 +63,25 @@ class TestParser(unittest.TestCase):
         ]
         self.assertEqual(split_sessions, excepted_sessions)
 
+    def test_filter_files_by_datetime(self):
+        start_time = datetime.datetime(2024, 3, 30, 8, 0)
+        end_time = datetime.datetime(2024, 3, 31, 12, 0)
+        parser = HttpdLogParser(
+            start_time, end_time, "/home/pipz/codes/ranger/outpost/logs/httpd/"
+        )
+        # only for local test
+        expected_files = [
+            "/home/pipz/codes/ranger/outpost/logs/httpd/access_log",
+            "/home/pipz/codes/ranger/outpost/logs/httpd/access_log-20240331",
+            "/home/pipz/codes/ranger/outpost/logs/httpd/access_log-20240324",
+            "/home/pipz/codes/ranger/outpost/logs/httpd/access_log-20240317",
+            "/home/pipz/codes/ranger/outpost/logs/httpd/access_log-20240310",
+        ]
+
+        files = parser.filter_files_by_datetime()
+
+        self.assertEqual(sorted(files), sorted(expected_files))
+
     def test_parse_sessions(self):
         start_time = datetime.datetime(2024, 3, 30, 8, 0)
         end_time = datetime.datetime(2024, 3, 31, 12, 0)
