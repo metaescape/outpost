@@ -47,7 +47,7 @@ class BotsHunter:
         # the key may be regular expression
         self.user_bots_lookup = config.bots_lookup
 
-    def hunt(self, info, fails: list):
+    def hunt(self, info, fails: Counter):
         """
         info: an dictionary with keys: ip, from, to, method, agent, return
         fails: a list to collect failed access ips
@@ -63,7 +63,7 @@ class BotsHunter:
             return True
         if self.abnormal_access(return_code):
             # a lot of fails from one ip imply potential attackers
-            fails.append(ip)
+            fails[ip] += 1
             return True
         if self.is_self_access(ip, agent_summary):
             return True
@@ -71,7 +71,7 @@ class BotsHunter:
         if self.from_equal_to(from_link, to):
             return True
 
-    def find_and_block_attackers(self, fails: list, session):
+    def find_and_block_attackers(self, fails: Counter, session):
         """
         find attackers from failed access
         filter out attackers and bots from raw normal visitors
@@ -79,9 +79,7 @@ class BotsHunter:
         """
 
         attackers = set(
-            x[0]
-            for x in Counter(fails).items()
-            if x[1] >= self.attackers_threshold
+            x[0] for x in fails.items() if x[1] >= self.attackers_threshold
         )
         # sudo iptables -A INPUT -s attacker_ip -j DROP
         for ip in attackers:
@@ -110,7 +108,7 @@ class BotsHunter:
                 return True
         return False
 
-    def is_recorded_bot(self, ip):
+    def trapped(self, ip):
         return self.match_bot_ip(ip)
 
     def add_bot_ip(self, ip, bot_name):
@@ -120,7 +118,7 @@ class BotsHunter:
     def is_bot_access(self, ip, agent_summary, from_link, to, method):
         agent_summary = agent_summary.lower()
 
-        if self.is_recorded_bot(ip):
+        if self.trapped(ip):
             return True
 
         # 由于 bots dict 只作为查询表,因此可以随时保存,越保存频繁越能检测到

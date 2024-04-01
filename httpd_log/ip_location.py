@@ -18,8 +18,6 @@ class GeoLocator:
         with open(ip2location_path, "r") as f:
             self.ip2location = json.load(f)
 
-        self.session_dict = {}
-
     # magic conatins
     def __contains__(self, ip):
         return ip in self.ip2location
@@ -66,6 +64,26 @@ class GeoLocator:
         if city == "XX":
             city = country
         return country, city
+
+    def merge_table(self, table: dict):
+        """
+        update self.ip2location with table
+            merge local table to global ip2location
+
+            items in ip2location:
+            "103.169.xx.xx": [
+            "地球:地球",
+            1,
+            "2024-01-31T12:49:43"
+        ],
+
+        """
+        for ip in table:
+            if ip not in self.ip2location:
+                self.ip2location[ip] = table[ip]
+            else:
+                table[ip][1] += self.ip2location[ip][1]
+                self.ip2location[ip] = table[ip]
 
 
 # add main for manual request
