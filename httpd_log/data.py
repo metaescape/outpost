@@ -14,17 +14,22 @@ class WebTrafficInsights:
     """
     作为一个单例类，用于获取ip的地理位置， 同时维护了多个全局字典，作为数据持久缓存
     - ip2location: 用于存储ip的地理位置信息
-    - location_cnt: 用于存储地理位置来访次数
-    - pages_cnt: 用于存储页面访问次数
+    - page_locations: 包含 pages_loc 和 pages_cnt, 分别用于存储地理位置来访次数和存储页面访问次数
     - from2to: 用于存储从哪个（外部）页面到哪个页面的访问次数
     """
 
     def __init__(self, access_key="alibaba-inc"):
         self.base_url = "http://ip.taobao.com/outGetIpInfo"
         self.access_key = access_key
+        self.setup_caches()
+
+    def setup_caches(self):
         ip2location_path = os.path.join(DATA_DIR, "ip2location.json")
         with open(ip2location_path, "r") as f:
             self.ip2location = json.load(f)
+        pages_loc_path = os.path.join(DATA_DIR, "pages_loc.json")
+        with open(pages_loc_path, "r") as f:
+            self.pages_locations = json.load(f)
 
     # magic conatins
     def __contains__(self, ip):
@@ -73,7 +78,7 @@ class WebTrafficInsights:
             city = country
         return country, city
 
-    def merge_table(self, table: dict):
+    def merge_ip2location(self, table: dict):
         """
         update self.ip2location with table
             merge local table to global ip2location
@@ -92,6 +97,24 @@ class WebTrafficInsights:
             else:
                 table[ip][1] += self.ip2location[ip][1]
                 self.ip2location[ip] = table[ip]
+
+    def merge_pages(self, pages: dict):
+        for page in pages:
+            if page not in self.pages_locations["pages"]:
+                self.pages_locations["pages"][page] = pages[page]
+            else:
+                self.pages_locations["pages"][page] += pages[page]
+
+    def merge_locations(self, locations: dict):
+        for location in locations:
+            if location not in self.pages_locations["locations"]:
+                self.pages_locations["locations"][location] = locations[
+                    location
+                ]
+            else:
+                self.pages_locations["locations"][location] += locations[
+                    location
+                ]
 
 
 # add main for manual request

@@ -148,13 +148,13 @@ class SessionAnalyzer:
         self.session_data["pv"] = cnt
         self.session_data["uv"] = unique_cnt
 
-    def merge_ip2location(self):
-
-        self.geolocator.merge_table(self.session_data["ip2location"])
-
-    def merge_pages_loc(self):
-        # ip2location, pages, locations all need to be merged
-        self.geolocator.merge_table(self.session_data["pages"])
+    def merge_tables(self):
+        """
+        ip2location, pages, locations all need to be merged
+        """
+        self.geolocator.merge_ip2location(self.session_data["ip2location"])
+        self.geolocator.merge_pages(self.session_data["pages"])
+        self.geolocator.merge_locations(self.session_data["locations"])
 
 
 def is_access_static_files(to):

@@ -11,4 +11,6 @@ test.html
 *.org
 __pycache__/
 .mypy_cache/
+logs/
 *.log
+view.html
