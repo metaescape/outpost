@@ -12,20 +12,27 @@ class HttpdLogParser:
     def parse_loglines_to_sessions(self):
         loglines = self.parse_loglines_after_datetime()
         sessions = []
-        n = len(self.session_list)
-        for i, (start, end) in enumerate(self.session_list):
-            session_loglines = []
-            for logline in loglines:
-                if start <= logline["datetime"] < end:
-                    session_loglines.append(logline)
+        for k, (start, end) in enumerate(self.session_list):
+            sessions.append(
+                {
+                    "range": (start, end),
+                    "loglines": [],
+                    "is_full": k != len(self.session_list) - 1,
+                }
+            )
 
-            session = {
-                "range": (start, end),
-                "loglines": session_loglines,
-                "is_full": i != n - 1,
-            }
-            sessions.append(session)
+        for logline in loglines:
+            idx = self.get_session_id(logline["datetime"])
+            if idx != -1:
+                sessions[idx]["loglines"].append(logline)
+
         return sessions
+
+    def get_session_id(self, log_time):
+        for k, (start, end) in enumerate(self.session_list):
+            if start <= log_time <= end:
+                return k
+        return -1
 
     def parse_loglines_after_datetime(self):
         files_from_new_to_old = self.filter_files_by_datetime()
@@ -38,7 +45,7 @@ class HttpdLogParser:
                     log_entry = self.safe_parse_line(line)
                     if log_entry and log_entry["datetime"] > self.start_time:
                         loglines.append(log_entry)
-        return loglines
+        return loglines[::-1]
 
     def filter_files_by_datetime(self):
         all_files = httpd_logfiles(self.log_dir)

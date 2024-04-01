@@ -92,6 +92,7 @@ class TestParser(unittest.TestCase):
         sessions = parser.parse_loglines_to_sessions()
         self.assertEqual(len(sessions), 2)
         self.assertGreater(len(sessions[0]["loglines"]), 500)
+        self.assertGreater(len(sessions[1]["loglines"]), 100)
 
 
 if __name__ == "__main__":
