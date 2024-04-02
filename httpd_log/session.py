@@ -26,6 +26,7 @@ class SessionAnalyzer:
 
         self.geolocator = WebTrafficInsights()
         self.bot_hunter = BotsHunter(config)
+        self.filter_page_keywords = config.filter_page_keywords
 
         self.session_data = {
             "fails": Counter(),  # failed access ips, intermidiate data for attackers check
@@ -116,27 +117,30 @@ class SessionAnalyzer:
                 from_loc = f"从 {from_link} " if from_link else " "
                 access_note = f"{date} 来自 {country} {city} 的 {ip} {from_loc}{freq}访问了 {access_page}"
                 self.add_msg(access_note)
-                self.update_session_ip2location(ip, country, city, date)
-                self.update_session_pages_loc(country, city, access_page)
+                self.update_ip2location(ip, country, city, date)
+                self.update_pages_loc(country, city, access_page)
 
         self.update_visit_count(valid_access_record)
 
-    def update_session_ip2location(self, ip, country, city, date):
+    def update_ip2location(self, ip, country, city, date):
         if ip not in self.session_data["ip2location"]:
             self.session_data["ip2location"][ip] = [
                 f"{country}:{city}",
-                1,
+                0,
                 date,
             ]
+        self.session_data["ip2location"][ip][1] += 1
+        self.session_data["ip2location"][ip][2] = date
         if country != "地球":
             self.session_data["ip2location"][ip][0] = f"{country}:{city}"
-        self.session_data["ip2location"][ip][1] += 1
 
-    def update_session_pages_loc(self, country, city, access_page):
-        if "categories" not in access_page:  # TODO add rules
-            loc = f"{country} {city}"
-            self.session_data["pages"][access_page] += 1
-            self.session_data["locations"][loc] += 1
+    def update_pages_loc(self, country, city, access_page):
+        if any(kw in access_page for kw in self.filter_page_keywords):
+            return
+
+        loc = f"{country} {city}"
+        self.session_data["pages"][access_page] += 1
+        self.session_data["locations"][loc] += 1
 
     # count page view and unique visitor
     def update_visit_count(self, valid_access_record):

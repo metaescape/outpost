@@ -5,6 +5,7 @@ from httpd_log.parser import HttpdLogParser
 from configs.config import Config
 import datetime
 import os
+from collections import defaultdict
 
 
 class TestSessionIntegration(unittest.TestCase):
@@ -76,6 +77,65 @@ class TestSessionIntegration(unittest.TestCase):
         self.assertEqual(
             self.analyzer.session_data["content"],
             ["<p> world </p>\n", "<p> hello </p>\n"],
+        )
+
+    def test_update_ip2location(self):
+        self.analyzer.session_data = {
+            "ip2location": {},
+        }
+
+        self.analyzer.update_ip2location(
+            "192.168.1.1", "Country", "City", "2022-01-01"
+        )
+        self.assertIn("192.168.1.1", self.analyzer.session_data["ip2location"])
+        self.assertEqual(
+            self.analyzer.session_data["ip2location"]["192.168.1.1"][1], 1
+        )
+        self.analyzer.update_ip2location(
+            "192.168.1.1", "Country", "City", "2022-01-03"
+        )
+        self.assertEqual(
+            self.analyzer.session_data["ip2location"]["192.168.1.1"][1], 2
+        )
+        self.assertEqual(
+            self.analyzer.session_data["ip2location"]["192.168.1.1"][2],
+            "2022-01-03",
+        )
+
+    def test_update_pages_loc(self):
+        self.analyzer.session_data = {
+            "pages": defaultdict(int),
+            "locations": defaultdict(int),
+        }
+
+        self.analyzer.update_pages_loc("Country", "City", "/categories/")
+        self.assertEqual(
+            self.analyzer.session_data["pages"]["/categories/"], 0
+        )
+        self.assertEqual(
+            self.analyzer.session_data["locations"]["Country City"], 0
+        )
+
+        self.analyzer.update_pages_loc("Country", "City", "/posts/1")
+        self.assertEqual(self.analyzer.session_data["pages"]["/posts/1"], 1)
+        self.assertEqual(
+            self.analyzer.session_data["locations"]["Country City"], 1
+        )
+
+    def test_update_visit_count(self):
+        self.analyzer.session_data = {
+            "ip2location": {},
+            "pages": defaultdict(int),
+            "locations": defaultdict(int),
+            "content": [],
+        }
+
+        self.analyzer.update_visit_count([1, 1, 2, 2, 3, 3, 4])
+        self.assertEqual(self.analyzer.session_data["pv"], 7)
+        self.assertEqual(self.analyzer.session_data["uv"], 4)
+        self.assertEqual(
+            self.analyzer.session_data["content"],
+            ["<p> total and unique view 7:4 </p>\n"],
         )
 
 
