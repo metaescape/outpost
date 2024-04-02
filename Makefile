@@ -14,7 +14,15 @@ httpdlog:
 local-test:
 	python main.py --exec=local
 
-push:
+push-dir:
+	rsync -avz --no-perms --no-owner --no-group --exclude=loghist.txt --exclude=".git/"\
+		--exclude="__pycache__/" --exclude="*.json*" --exclude="*.txt" --exclude="*.log"\
+		--exclude="*.mypy_cache" --exclude="logs/" \
+		~/codes/ranger/outpost/ root@tc:~/outpost/
+
+	ssh tc 'systemctl start outpost'
+
+push-and-restart:
 	set -x
 	ssh tc 'systemctl stop outpost'
 	scp root@tc:~/outpost/*.json $HOME/codes/ranger/outpost/
@@ -27,5 +35,8 @@ push:
 	ssh tc 'systemctl start outpost'
 
 view:
-	rsync -avz $HOME/codes/ranger/outpost/analysis/ root@tc:/var/www/html/analysis/ \
+	rsync -avz ~/codes/ranger/outpost/analysis/ root@tc:/var/www/html/analysis/ \
 	 --exclude="*.json*" --exclude="*.py" --exclude="*.txt"
+
+temp-push-json:
+	rsync -avz ~/codes/ranger/outpost/.vscode/*.json root@tc:~/outpost/.vscode/

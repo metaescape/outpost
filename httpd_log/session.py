@@ -14,7 +14,7 @@ class SessionAnalyzer:
     if the session is a full session, it will also save session info to persistent storage
     """
 
-    def __init__(self, session, config):
+    def __init__(self, session, config, is_server=False):
         """
         session format:
         {
@@ -28,6 +28,7 @@ class SessionAnalyzer:
         self.end_time = session["range"][1]
         self.end_date_str = datetime2str(self.end_time, only_date=True)
         self.is_full = session["is_full"]
+        self.is_server = is_server
 
         self.data_insights = WebTrafficInsights()
         self.bot_hunter = BotsHunter(config)
@@ -93,9 +94,11 @@ class SessionAnalyzer:
                         info["datetime"],
                     )
                 )
-        self.bot_hunter.find_and_block_attackers(
-            self.session_data["fails"], self
-        )
+
+        if self.is_server:
+            self.bot_hunter.find_and_block_attackers(
+                self.session_data["fails"], self
+            )
 
     def fine_scan_for_normal_access(self):
         # 二次过滤 normal_access
@@ -121,7 +124,12 @@ class SessionAnalyzer:
         for ip, access_page, from_link, date in normal_access:
             country, city = self.data_insights.get_location(ip)
 
-            freq = "再次" if ip in self.data_insights else "初次"
+            freq = "初次"
+            if (
+                ip in self.data_insights
+                or ip in self.session_data["ip2location"]
+            ):
+                freq = "再次"
 
             if "html" in access_page:
                 valid_access_record.append(ip)

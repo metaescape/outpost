@@ -6,7 +6,7 @@ After=network.target
 Type=simple
 User=root
 WorkingDirectory=/root/outpost
-ExecStart=/opt/miniconda3/bin/python /root/outpost/logcheck.py --exec=server
+ExecStart=/opt/miniconda3/bin/python /root/outpost/main.py --exec=server
 Restart=always
 RestartSec=5
 

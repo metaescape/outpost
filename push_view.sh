@@ -1,1 +1,0 @@
-rsync -avz $HOME/codes/ranger/outpost/analysis/ root@tc:/var/www/html/analysis/ --exclude="*.json*" --exclude="*.py" --exclude="*.txt"

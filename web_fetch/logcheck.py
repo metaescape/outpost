@@ -15,34 +15,22 @@ from datetime import timedelta
 from functools import lru_cache
 from pprint import pprint
 from typing import Optional
-from httpd_log.parser import standard_line_parser
+
+# from httpd_log.parser import standard_line_parser
 
 
 import requests
-
-
 from config import Config
-from mail import send_mail
+
+# from mail import send_mail
 from motto import motto
 
-import logging
-import logging.handlers
+
 import time
+import logging
 
-# 创建一个日志记录器
-logger = logging.getLogger("MyLogger")
-logger.setLevel(logging.INFO)
+logger = logging.getLogger(__name__)
 
-# 创建RotatingFileHandler
-# 这里设置日志文件最大2MB，最多保留5个旧日志文件
-handler = logging.handlers.RotatingFileHandler(
-    "outpost.log", maxBytes=1 * 1024 * 1024, backupCount=2
-)
-formatter = logging.Formatter("%(asctime)s:%(levelname)s:%(message)s")
-handler.setFormatter(formatter)
-
-# 添加处理程序到记录器
-logger.addHandler(handler)
 
 cnf = Config()
 SITE = cnf.httpd["sitename"]
@@ -244,76 +232,6 @@ def get_recent_logfiles(logfile, last):
                 files.append(file_path)
 
     return files
-
-
-def full_fetch(logfiles, old_hist, last):
-    global bots_lookup
-    if type(logfiles) == str:
-        logfiles = get_recent_logfiles(logfiles, last)
-
-    httpd_info = collect_httpd_log(logfiles, last, True)
-
-    httpd_content = httpd_info["content"]
-    attackers = httpd_info["attackers"]
-
-    # gitnews = safe_gitstar(last)
-    fmt = "%Y年%m月%d日%H时%M分"
-    now = datetime.datetime.today().strftime(fmt)
-    last = last.strftime(fmt)
-    mail_content = []
-    old = []
-
-    if os.path.exists(old_hist):
-        with open(old_hist, "r", encoding="utf-8") as f:
-            old = list(f.readlines())
-
-    with open(old_hist, "w", encoding="utf-8") as f:
-        write_to_f_and_list(f"<h2>{SITE} 简报</h2> \n", f, mail_content)
-        write_to_f_and_list(f"<p>{last} -> {now}</p>\n", f, mail_content)
-
-        if gitnews:
-            for line in gitnews:
-                write_to_f_and_list(line, f, mail_content)
-        if httpd_content:
-            for line in httpd_content:
-                write_to_f_and_list(line, f, mail_content)
-        if attackers:
-            for ip in attackers:
-                country, city = get_pos_from_ip(ip)
-                write_to_f_and_list(
-                    f"<p>疑似遭遇到 {country} {city} 的 {ip} 的攻击</p>\n",
-                    f,
-                    mail_content,
-                )
-        last_bots_lookup = read_bots_lookup()
-        # robots is the diff between bots_lookup and last_bots_lookup
-        robots = dict(set(bots_lookup.items()) - set(last_bots_lookup.items()))
-        if robots:
-            for botname in robots:
-                write_to_f_and_list(
-                    f"<p>新增来自 {robots[botname]} 的 {botname} 爬取了本站</p>\n",
-                    f,
-                    mail_content,
-                )
-        f.write("\n")
-        for line in old:
-            f.write(line)
-
-    mail_content.extend(motto(cnf))
-    if hasattr(cnf, "news"):
-        mail_content.append("<h2>Hacknews 简析</h2>\n")
-        # 新闻分析获取
-        url = cnf.news["url"]
-        data = cnf.news["data"]
-        response = requests.post(url, data=data, stream=True)
-
-        # 处理每一行响应数据
-        for line in response.iter_lines():
-            if line:
-                mail_content.append(f"<p>{line.decode('utf-8')}</p>\n")
-
-    send_mail(cnf, "".join(mail_content))
-    return datetime.datetime.today()
 
 
 def extract_full_url(user_agent: str) -> Optional[str]:
@@ -610,9 +528,9 @@ def eager_fetch(logfiles, watch_url, last, test=False):
         update_traffic_jsonl(httpd_info)
 
         # diff = check_and_save_html_changes(watch_url)
-        if diff:
-            mail_content.append("<h2>网页变化</h2>\n")
-            mail_content.extend(diff)
+        # if diff:
+        #     mail_content.append("<h2>网页变化</h2>\n")
+        #     mail_content.extend(diff)
         if mail_content:
             logger.info("start sending mail")
             fmt = "%Y年%m月%d日%H时%M分:\n"
@@ -696,20 +614,6 @@ def server():
         time.sleep(60 * 10)  # 10 分钟检查一次
 
 
-def read_all():
-    gap = 2000
-    last = datetime.datetime.today() - timedelta(hours=gap)
-    logfiles = glob.glob(f"{cnf.httpd['logfile']}*")
-    full_fetch(logfiles, "loghist.txt", last)
-
-
-def test():
-    gap = 2000
-    last = datetime.datetime.today() - timedelta(hours=gap)
-    logfiles = glob.glob(f"{cnf.httpd['logfile']}")
-    full_fetch(logfiles, "loghist.txt", last)
-
-
 def test_eager_fetch():
     gap = 2000
     last = datetime.datetime.today() - timedelta(hours=gap)
@@ -717,6 +621,76 @@ def test_eager_fetch():
     return eager_fetch(
         logfiles, "https://zhuanlan.zhihu.com/p/651112449", last, test=True
     )
+
+
+def full_fetch(logfiles, old_hist, last):
+    global bots_lookup
+    if type(logfiles) == str:
+        logfiles = get_recent_logfiles(logfiles, last)
+
+    httpd_info = collect_httpd_log(logfiles, last, True)
+
+    httpd_content = httpd_info["content"]
+    attackers = httpd_info["attackers"]
+
+    # gitnews = safe_gitstar(last)
+    fmt = "%Y年%m月%d日%H时%M分"
+    now = datetime.datetime.today().strftime(fmt)
+    last = last.strftime(fmt)
+    mail_content = []
+    old = []
+
+    if os.path.exists(old_hist):
+        with open(old_hist, "r", encoding="utf-8") as f:
+            old = list(f.readlines())
+
+    with open(old_hist, "w", encoding="utf-8") as f:
+        write_to_f_and_list(f"<h2>{SITE} 简报</h2> \n", f, mail_content)
+        write_to_f_and_list(f"<p>{last} -> {now}</p>\n", f, mail_content)
+
+        if gitnews:
+            for line in gitnews:
+                write_to_f_and_list(line, f, mail_content)
+        if httpd_content:
+            for line in httpd_content:
+                write_to_f_and_list(line, f, mail_content)
+        if attackers:
+            for ip in attackers:
+                country, city = get_pos_from_ip(ip)
+                write_to_f_and_list(
+                    f"<p>疑似遭遇到 {country} {city} 的 {ip} 的攻击</p>\n",
+                    f,
+                    mail_content,
+                )
+        last_bots_lookup = read_bots_lookup()
+        # robots is the diff between bots_lookup and last_bots_lookup
+        robots = dict(set(bots_lookup.items()) - set(last_bots_lookup.items()))
+        if robots:
+            for botname in robots:
+                write_to_f_and_list(
+                    f"<p>新增来自 {robots[botname]} 的 {botname} 爬取了本站</p>\n",
+                    f,
+                    mail_content,
+                )
+        f.write("\n")
+        for line in old:
+            f.write(line)
+
+    mail_content.extend(motto(cnf))
+    if hasattr(cnf, "news"):
+        mail_content.append("<h2>Hacknews 简析</h2>\n")
+        # 新闻分析获取
+        url = cnf.news["url"]
+        data = cnf.news["data"]
+        response = requests.post(url, data=data, stream=True)
+
+        # 处理每一行响应数据
+        for line in response.iter_lines():
+            if line:
+                mail_content.append(f"<p>{line.decode('utf-8')}</p>\n")
+
+    send_mail(cnf, "".join(mail_content))
+    return datetime.datetime.today()
 
 
 if __name__ == "__main__":

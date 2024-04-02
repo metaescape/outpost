@@ -51,7 +51,7 @@ class BotsHunter:
 
     def write_back(self):
         with open(self.bots_path, "w") as f:
-            json.dump(self.bots_lookup, f)
+            json.dump(self.bots_lookup, f, indent=4, ensure_ascii=False)
 
     def hunt(self, info, fails: Counter):
         """
@@ -147,7 +147,7 @@ class BotsHunter:
 
         for keyword in self.BOTS_ACCESS_KEYWORDS:
             if keyword in to:
-                return self.add_bot_ip(ip, "{keyword} bot")
+                return self.add_bot_ip(ip, f"{keyword} bot")
 
         for ip_address in self.server_ips:
             if ip_address in to or ip_address in from_link:

@@ -17,12 +17,15 @@ class Workflow:
     def __init__(self, start_time, end_time, log_folder, config):
         self.is_server = False
         if log_folder == "/var/log/httpd" and os.path.exists(log_folder):
+            logging.info("running on server")
             self.is_server = True
 
-        gap_hours = config.time["eager_gap"]
-        if tolerant_time(end_time - start_time, timedelta(hours=gap_hours)):
-            # convert to hours
-            gap_hours = (end_time - start_time).seconds / 3600
+        gap_hours = 24
+        if tolerant_time(
+            end_time - start_time, timedelta(hours=config.time["eager_gap"])
+        ):
+            # if far
+            gap_hours = config.time["eager_gap"]
 
         self.parser = HttpdLogParser(
             start_time, end_time, log_folder, gap_hours
@@ -41,7 +44,7 @@ class Workflow:
     def run(self):
         self.sessions = self.parser.parse_loglines_to_sessions()
         for session in self.sessions:
-            analyzer = SessionAnalyzer(session, self.config)
+            analyzer = SessionAnalyzer(session, self.config, self.is_server)
             session_result = analyzer.run()
             if analyzer.is_full:
                 write_last_eager(session["range"][1])
@@ -59,7 +62,7 @@ class Workflow:
         self.mail_content = []
 
 
-def tolerant_time(timedelta1, timedelta2, tolerance=1):
+def tolerant_time(timedelta1, timedelta2, tolerance=0.5):
     return abs(timedelta1 - timedelta2) < timedelta(hours=tolerance)
 
 
