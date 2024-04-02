@@ -61,6 +61,8 @@ class SessionAnalyzer:
         self.scan_for_bots()
         self.fine_scan_for_normal_access()
         self.generate_report_and_statistics()
+        if self.is_full:
+            self.end_session_action()
         return self.session_data
 
     def scan_for_bots(self):
@@ -126,12 +128,12 @@ class SessionAnalyzer:
                 from_loc = f"从 {from_link} " if from_link else " "
                 access_note = f"{date} 来自 {country} {city} 的 {ip} {from_loc}{freq}访问了 {access_page}"
                 self.add_msg(access_note)
-                self.update_ip2location(ip, country, city, date)
+                self.update_ip2location(ip, country, city, datetime2str(date))
                 self.update_pages_loc(country, city, access_page)
 
         self.update_visit_count(valid_access_record)
 
-    def update_ip2location(self, ip, country, city, date):
+    def update_ip2location(self, ip, country, city, date: str):
         if ip not in self.session_data["ip2location"]:
             self.session_data["ip2location"][ip] = [
                 f"{country}:{city}",
@@ -195,6 +197,13 @@ class SessionAnalyzer:
         self.bot_hunter.write_back()
         self.write_content()
         self.write_traffic()
+
+    def end_session_action(self):
+        logging.info(
+            "session is full, merge local table to global cache and save ..."
+        )
+        self.merge_tables()
+        self.write_back()
 
     def copy_to_server_dir(self):
         command = [

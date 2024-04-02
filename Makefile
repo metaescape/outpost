@@ -8,6 +8,12 @@ test:
 install:
 	pip install -r requirements.txt
 
+httpdlog:
+	scp -r root@tc:/var/log/httpd/access* ~/codes/ranger/outpost/logs/httpd/
+
+local-test:
+	python main.py --exec=local
+
 push:
 	set -x
 	ssh tc 'systemctl stop outpost'

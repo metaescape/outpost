@@ -128,11 +128,12 @@ class WebTrafficInsights:
                 self.pages_locations["locations"][location] += loc_cnt
 
     def write_page_locations(self):
-        with open(self.pages_loc_path, "rw") as f:
+        with open(self.pages_loc_path, "w") as f:
             json.dump(self.pages_locations, f, indent=4, ensure_ascii=False)
 
     def write_ip2location(self):
-        with open(self.ip2location_path, "rw") as f:
+
+        with open(self.ip2location_path, "w") as f:
             json.dump(self.ip2location, f, indent=4, ensure_ascii=False)
 
 

@@ -1,5 +1,6 @@
 import datetime
 import os
+import logging
 
 
 class HttpdLogParser:
@@ -15,12 +16,12 @@ class HttpdLogParser:
         loglines = self.parse_loglines_after_datetime()
 
         sessions = []
-        for k, (start, end) in enumerate(self.session_list):
+        for k, (start, end, is_full) in enumerate(self.session_list):
             sessions.append(
                 {
                     "range": (start, end),
                     "loglines": [],
-                    "is_full": k != len(self.session_list) - 1,
+                    "is_full": is_full,
                 }
             )
 
@@ -32,7 +33,7 @@ class HttpdLogParser:
         return sessions
 
     def get_session_id(self, log_time):
-        for k, (start, end) in enumerate(self.session_list):
+        for k, (start, end, _) in enumerate(self.session_list):
             if start <= log_time <= end:
                 return k
         return -1
@@ -48,6 +49,9 @@ class HttpdLogParser:
                     log_entry = self.safe_parse_line(line)
                     if log_entry and log_entry["datetime"] > self.start_time:
                         loglines.append(log_entry)
+        logging.info(
+            f"{len(loglines)} form {self.start_time} to {self.end_time} had been parsed"
+        )
         return loglines[::-1]
 
     def filter_files_by_datetime(self):
@@ -143,10 +147,12 @@ def split_session(start_time, end_time, hours=24):
     session_list = []
     start = start_time
     while start < end_time:
+        is_full = True
         end = start + datetime.timedelta(hours=hours)
         if end > end_time:
             end = end_time
-        session_list.append((start, end))
+            is_full = False
+        session_list.append((start, end, is_full))
         start = end
     return session_list
 
