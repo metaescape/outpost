@@ -24,7 +24,7 @@ class SessionAnalyzer:
         self.end_time = session["range"][1]
         self.is_full = session["is_full"]
 
-        self.geolocator = WebTrafficInsights()
+        self.data_insights = WebTrafficInsights()
         self.bot_hunter = BotsHunter(config)
         self.filter_page_keywords = config.filter_page_keywords
 
@@ -108,9 +108,9 @@ class SessionAnalyzer:
         valid_access_record = []
         normal_access = self.session_data["normal_access"]
         for ip, access_page, from_link, date in normal_access:
-            country, city = self.geolocator.get_location(ip)
+            country, city = self.data_insights.get_location(ip)
 
-            freq = "再次" if ip in self.geolocator else "初次"
+            freq = "再次" if ip in self.data_insights else "初次"
 
             if "html" in access_page:
                 valid_access_record.append(ip)
@@ -156,9 +156,14 @@ class SessionAnalyzer:
         """
         ip2location, pages, locations all need to be merged
         """
-        self.geolocator.merge_ip2location(self.session_data["ip2location"])
-        self.geolocator.merge_pages(self.session_data["pages"])
-        self.geolocator.merge_locations(self.session_data["locations"])
+        self.data_insights.merge_ip2location(self.session_data["ip2location"])
+        self.data_insights.merge_page_locations(
+            self.session_data["pages"], self.session_data["locations"]
+        )
+
+    def write_back(self):
+        self.data_insights.write_ip2location()
+        self.data_insights.write_page_locations()
 
 
 def is_access_static_files(to):

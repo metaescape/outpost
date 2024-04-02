@@ -98,23 +98,26 @@ class WebTrafficInsights:
                 table[ip][1] += self.ip2location[ip][1]
                 self.ip2location[ip] = table[ip]
 
-    def merge_pages(self, pages: dict):
-        for page in pages:
+    def merge_page_locations(self, pages: dict, locations: dict):
+        for page, cnt in pages.items():
             if page not in self.pages_locations["pages"]:
-                self.pages_locations["pages"][page] = pages[page]
+                self.pages_locations["pages"][page] = cnt
             else:
-                self.pages_locations["pages"][page] += pages[page]
+                self.pages_locations["pages"][page] += cnt
 
-    def merge_locations(self, locations: dict):
-        for location in locations:
+        for location, loc_cnt in locations.items():
             if location not in self.pages_locations["locations"]:
-                self.pages_locations["locations"][location] = locations[
-                    location
-                ]
+                self.pages_locations["locations"][location] = loc_cnt
             else:
-                self.pages_locations["locations"][location] += locations[
-                    location
-                ]
+                self.pages_locations["locations"][location] += loc_cnt
+
+    def write_page_locations(self):
+        with open(self.pages_locations, "rw") as f:
+            json.dump(self.pages_locations, f, indent=4, ensure_ascii=False)
+
+    def write_ip2location(self):
+        with open(self.ip2location, "rw") as f:
+            json.dump(self.ip2location, f, indent=4, ensure_ascii=False)
 
 
 # add main for manual request

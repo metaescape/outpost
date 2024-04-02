@@ -71,17 +71,18 @@ class TestWebTrafficInsights(unittest.TestCase):
             ["地球:地球", 3, "2024-01-31T12:55:00"],
         )
 
-    def test_merge_locations_new(self):
+    def test_merge_locations(self):
         new_locations = {"地球:地球": 1}
-        self.insights.merge_locations(new_locations)
+        pages = {"page1": 1}
+        self.insights.merge_page_locations(pages, new_locations)
         self.assertEqual(
             self.insights.pages_locations["locations"]["地球:地球"], 1
         )
+        self.assertEqual(self.insights.pages_locations["pages"]["page1"], 1)
 
-    def test_merge_locations_existing(self):
         self.insights.pages_locations["locations"]["地球:地球"] = 1
         additional_locations = {"地球:地球": 2}
-        self.insights.merge_locations(additional_locations)
+        self.insights.merge_page_locations(pages, additional_locations)
         self.assertEqual(
             self.insights.pages_locations["locations"]["地球:地球"], 3
         )
