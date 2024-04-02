@@ -24,12 +24,28 @@ class WebTrafficInsights:
         self.setup_caches()
 
     def setup_caches(self):
-        ip2location_path = os.path.join(DATA_DIR, "ip2location.json")
-        with open(ip2location_path, "r") as f:
-            self.ip2location = json.load(f)
-        pages_loc_path = os.path.join(DATA_DIR, "pages_loc.json")
-        with open(pages_loc_path, "r") as f:
-            self.pages_locations = json.load(f)
+        self.ip2location_path = os.path.join(DATA_DIR, "ip2location.json")
+        if os.path.exists(self.ip2location_path):
+            logging.info(f"Loading ip2location from {self.ip2location_path}")
+            with open(self.ip2location_path, "r") as f:
+                self.ip2location = json.load(f)
+        else:
+            logging.info(
+                f"{self.ip2location_path} not found, creating new one."
+            )
+            self.ip2location = {}
+
+        self.pages_loc_file = "pages_loc.json"
+        self.pages_loc_path = os.path.join(DATA_DIR, self.pages_loc_file)
+        if os.path.exists(self.pages_loc_path):
+            with open(self.pages_loc_path, "r") as f:
+                self.pages_locations = json.load(f)
+        else:
+            logging.info(f"{self.pages_loc_path} not found, creating new one.")
+            self.pages_locations = {"pages": {}, "locations": {}}
+
+    def get_pages_loc_file_and_path(self):
+        return self.pages_loc_file, self.pages_loc_path
 
     # magic conatins
     def __contains__(self, ip):
@@ -112,11 +128,11 @@ class WebTrafficInsights:
                 self.pages_locations["locations"][location] += loc_cnt
 
     def write_page_locations(self):
-        with open(self.pages_locations, "rw") as f:
+        with open(self.pages_loc_path, "rw") as f:
             json.dump(self.pages_locations, f, indent=4, ensure_ascii=False)
 
     def write_ip2location(self):
-        with open(self.ip2location, "rw") as f:
+        with open(self.ip2location_path, "rw") as f:
             json.dump(self.ip2location, f, indent=4, ensure_ascii=False)
 
 

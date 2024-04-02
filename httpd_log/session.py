@@ -1,7 +1,11 @@
 from httpd_log.bots import BotsHunter
 from httpd_log.data import WebTrafficInsights
+from httpd_log.parser import datetime2str
+from utils import PORJ_DIR, DATA_DIR
 from collections import defaultdict, Counter
 import os
+import logging
+import subprocess
 
 
 class SessionAnalyzer:
@@ -22,11 +26,16 @@ class SessionAnalyzer:
         self.loglines = session["loglines"]
         self.start_time = session["range"][0]
         self.end_time = session["range"][1]
+        self.end_date_str = datetime2str(self.end_time, only_date=True)
         self.is_full = session["is_full"]
 
         self.data_insights = WebTrafficInsights()
         self.bot_hunter = BotsHunter(config)
         self.filter_page_keywords = config.filter_page_keywords
+        self.pages_loc_file, self.pages_loc_path = (
+            self.data_insights.get_pages_loc_file_and_path()
+        )
+        self.day_traffic_path = os.path.join(DATA_DIR, "traffic.jsonl")
 
         self.session_data = {
             "fails": Counter(),  # failed access ips, intermidiate data for attackers check
@@ -147,8 +156,10 @@ class SessionAnalyzer:
 
         cnt = len(valid_access_record)
         unique_cnt = len(set(valid_access_record))
-
-        self.add_msg(f"total and unique view {cnt}:{unique_cnt}", prepend=True)
+        now_datetime_str = datetime2str(self.end_time)
+        self.add_msg(
+            f"{now_datetime_str} {cnt}:{unique_cnt} / pv:uv", prepend=True
+        )
         self.session_data["pv"] = cnt
         self.session_data["uv"] = unique_cnt
 
@@ -161,9 +172,42 @@ class SessionAnalyzer:
             self.session_data["pages"], self.session_data["locations"]
         )
 
+    def write_content(self):
+
+        mail_dir = os.path.join(PORJ_DIR, "logs", "mails")
+        if not os.path.exists(mail_dir):
+            os.makedirs(mail_dir)
+        mail_path = os.path.join(mail_dir, f"{self.end_date_str}.txt")
+        logging.info(f"writing back to {mail_path}")
+        with open(mail_path, "w") as f:
+            f.write("".join(self.session_data["content"]))
+
+    def write_traffic(self):
+        logging.info(f"writing back to {self.day_traffic_path}")
+        with open(self.day_traffic_path, "a") as f:
+            f.write(
+                f'["{self.end_date_str}", {self.session_data["pv"]}, {self.session_data["uv"]}]\n'
+            )
+
     def write_back(self):
         self.data_insights.write_ip2location()
         self.data_insights.write_page_locations()
+        self.bot_hunter.write_back()
+        self.write_content()
+        self.write_traffic()
+
+    def copy_to_server_dir(self):
+        command = [
+            "sudo",
+            "cp",
+            self.day_traffic_path,
+            self.pages_loc_path,
+            "/var/www/html/analysis/",
+        ]
+        subprocess.run(command)
+        logging.info(
+            "traffic.jsonl and pages_loc.json copied to /var/www/html/analysis/"
+        )
 
 
 def is_access_static_files(to):

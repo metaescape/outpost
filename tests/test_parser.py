@@ -35,8 +35,7 @@ class TestParser(unittest.TestCase):
     def test_split_session(self):
         start_time = datetime.datetime(2024, 3, 1, 8, 0)
         end_time = datetime.datetime(2024, 3, 3, 12, 0)
-        days = 1
-        split_sessions = split_session(start_time, end_time, days)
+        split_sessions = split_session(start_time, end_time)
         excepted_sessions = [
             (
                 datetime.datetime(2024, 3, 1, 8, 0),
@@ -55,7 +54,7 @@ class TestParser(unittest.TestCase):
 
         start_time = datetime.datetime(2024, 3, 30, 8, 0)
         end_time = datetime.datetime(2024, 3, 31, 12, 0)
-        split_sessions = split_session(start_time, end_time, days)
+        split_sessions = split_session(start_time, end_time)
         excepted_sessions = [
             (
                 datetime.datetime(2024, 3, 30, 8, 0),

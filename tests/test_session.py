@@ -1,7 +1,7 @@
 import unittest
 from httpd_log.session import SessionAnalyzer
 
-from httpd_log.parser import HttpdLogParser
+from httpd_log.parser import HttpdLogParser, datetime2str
 from configs.config import Config
 import datetime
 import os
@@ -11,14 +11,16 @@ from collections import defaultdict
 class TestSessionIntegration(unittest.TestCase):
     def setUp(self):
         start_time = datetime.datetime(2024, 3, 30, 8, 0)
-        end_time = datetime.datetime(2024, 3, 31, 12, 0)
+        self.end_time = datetime.datetime(2024, 3, 31, 12, 0)
 
         parser = HttpdLogParser(
-            start_time, end_time, "/home/pipz/codes/ranger/outpost/logs/httpd/"
+            start_time,
+            self.end_time,
+            "/home/pipz/codes/ranger/outpost/logs/httpd/",
         )
         sessions = parser.parse_loglines_to_sessions()
         config = Config()
-        self.analyzer = SessionAnalyzer(sessions[0], config)
+        self.analyzer = SessionAnalyzer(sessions[1], config)
         self.analyzer.loglines = [
             {
                 "client": '" "Mozilla/5.0 (compatible; Dataprovider.com)"\n',
@@ -135,7 +137,7 @@ class TestSessionIntegration(unittest.TestCase):
         self.assertEqual(self.analyzer.session_data["uv"], 4)
         self.assertEqual(
             self.analyzer.session_data["content"],
-            ["<p> total and unique view 7:4 </p>\n"],
+            [f"<p> {datetime2str(self.end_time)} 7:4 / pv:uv </p>\n"],
         )
 
 

@@ -3,14 +3,17 @@ import os
 
 
 class HttpdLogParser:
-    def __init__(self, start_time, end_time, log_dir="/var/log/httpd"):
+    def __init__(
+        self, start_time, end_time, log_dir="/var/log/httpd", hours=24
+    ):
         self.log_dir = log_dir
         self.start_time = start_time
         self.end_time = end_time
-        self.session_list = split_session(start_time, end_time)
+        self.session_list = split_session(start_time, end_time, hours=hours)
 
     def parse_loglines_to_sessions(self):
         loglines = self.parse_loglines_after_datetime()
+
         sessions = []
         for k, (start, end) in enumerate(self.session_list):
             sessions.append(
@@ -133,14 +136,14 @@ def get_files_after_datetime(files, last_datetime):
     return new_files
 
 
-def split_session(start_time, end_time, days=1):
+def split_session(start_time, end_time, hours=24):
     """
     split time range into sessions, each session is at most 24 hours by default
     """
     session_list = []
     start = start_time
     while start < end_time:
-        end = start + datetime.timedelta(days=days)
+        end = start + datetime.timedelta(hours=hours)
         if end > end_time:
             end = end_time
         session_list.append((start, end))

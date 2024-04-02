@@ -36,16 +36,22 @@ class BotsHunter:
         self.server_ips = config.ignore_ips["server_ips"]
         self.self_agent_msgs = config.self_agent_msgs
         self.attackers_threshold = config.attackers_threshold
-        self.bots_lookup = {}
-        # read bots_lookup.json from current directory
-        bots_path = os.path.join(DATA_DIR, "bots_lookup.json")
-        if os.path.exists(bots_path):
-            logging.info(f"Loading bots lookup from {bots_path}")
-            with open(bots_path, "r") as f:
-                self.bots_lookup = json.load(f)
-
+        self.setup()
         # the key may be regular expression
         self.user_bots_lookup = config.bots_lookup
+
+    def setup(self):
+        self.bots_lookup = {}
+        # read bots_lookup.json from current directory
+        self.bots_path = os.path.join(DATA_DIR, "bots_lookup.json")
+        if os.path.exists(self.bots_path):
+            logging.info(f"Loading bots lookup from {self.bots_path}")
+            with open(self.bots_path, "r") as f:
+                self.bots_lookup = json.load(f)
+
+    def write_back(self):
+        with open(self.bots_path, "w") as f:
+            json.dump(self.bots_lookup, f)
 
     def hunt(self, info, fails: Counter):
         """
