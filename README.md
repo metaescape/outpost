@@ -26,6 +26,6 @@ sudo systemctl enable outpost
 如果没有 systemd， 直接进入到本项目目录后手动执行以下命令也可以
 
 ```bash
-nohup python3 logcheck.py --exec=server > output.log 2>&1 &
+nohup python3 main.py --exec=server > output.log 2>&1 &
 
 ```

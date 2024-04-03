@@ -68,7 +68,7 @@
         margin: 20px;
       }
       #passwordPrompt button {
-        background-color: #ede7db;
+        background-color: #ece9e3;
         color: #4a5c62;
         padding: 10px 20px; /* 按钮内边距 */
         border: none; /* 去除边框 */
@@ -82,7 +82,6 @@
     </style>
     <style>
       .poem-container {
-        background-color: #f0ebdd; /* 容器背景色 */
         padding: 20px;
         border-radius: 10px;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
@@ -107,7 +106,7 @@
   </head>
 
   <body>
-    <div id="passwordPrompt">
+    <form id="passwordPrompt" onsubmit="checkPassword(event)">
       <label for="password">
         <div class="poem-container">
           <p class="line">多少人曾爱你青春欢唱的时辰</p>
@@ -117,12 +116,12 @@
         </div>
       </label>
       <input type="password" id="password" />
-      <button onclick="checkPassword()">提交</button>
-    </div>
+      <button type="submit">提交</button>
+    </form>
     <div id="protectedContent" style="display: none">
       <p id="total"></p>
 
-      <div style="max-height: 20vh">
+      <div style="max-height: 30vh">
         <canvas id="visits"></canvas>
       </div>
 
@@ -297,6 +296,7 @@
     </script>
     <script>
       function checkPassword() {
+        event.preventDefault();
         const userPassword = document.getElementById("password").value;
         const correctPassword = "hugchange";
 

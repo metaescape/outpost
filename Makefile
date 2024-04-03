@@ -32,8 +32,7 @@ push-and-restart:
 	ssh tc 'systemctl start outpost'
 
 view:
-	rsync -avz ~/codes/ranger/outpost/analysis/ root@tc:/var/www/html/analysis/ \
-	 --exclude="*.json*" --exclude="*.py" --exclude="*.txt"
+	rsync -avz ~/codes/ranger/outpost/analysis/*.html root@tc:/var/www/html/analysis/
 
 temp-push-json:
 	rsync -avz ~/codes/ranger/outpost/.vscode/*.json root@tc:~/outpost/.vscode/
