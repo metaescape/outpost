@@ -58,18 +58,23 @@ class TestBotsHunter(unittest.TestCase):
             "com.apple.WebKit.Networking/8614.4.6.0.6 CFNetwork/1404.0.5 Darwin/22.3.0",
             '" "Mozilla/5.0 (compatible; Dataprovider.com)"\n',
         ]
-        from logcheck import extract_full_url
 
-        self.assertEqual(extract_full_url(test_cases[0]), "Dataprovider.com")
         self.assertEqual(
-            extract_full_url(test_cases[1]), "http://ahrefs.com/robot"
+            BotsHunter.extract_full_url(test_cases[0]), "Dataprovider.com"
         )
         self.assertEqual(
-            extract_full_url(test_cases[2]), "https://security.ipip.net"
+            BotsHunter.extract_full_url(test_cases[1]),
+            "http://ahrefs.com/robot",
         )
-        self.assertEqual(extract_full_url(test_cases[3]), None)
+        self.assertEqual(
+            BotsHunter.extract_full_url(test_cases[2]),
+            "https://security.ipip.net",
+        )
+        self.assertEqual(BotsHunter.extract_full_url(test_cases[3]), None)
 
-        self.assertEqual(extract_full_url(test_cases[4]), "Dataprovider.com")
+        self.assertEqual(
+            BotsHunter.extract_full_url(test_cases[4]), "Dataprovider.com"
+        )
 
     def test_get_first_word_with_key(self):
         # Test the get_first_word_with_key function

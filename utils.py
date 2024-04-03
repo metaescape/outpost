@@ -22,6 +22,9 @@ def setup_logging():
     log_file_path = os.path.join(
         os.path.dirname(__file__), "logs", "outpost.log"
     )
+    # auto create dir if not exists
+    os.makedirs(os.path.dirname(log_file_path), exist_ok=True)
+
     # 1M max size, 2 backup files
     handler = logging.handlers.RotatingFileHandler(
         log_file_path, maxBytes=1 * 1024 * 1024, backupCount=2

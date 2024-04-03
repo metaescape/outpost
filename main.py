@@ -2,7 +2,6 @@ import json
 import os
 import datetime
 import logging
-import subprocess
 from mail.mail import send_mail
 from httpd_log.parser import HttpdLogParser, datetime2str, str2datetime
 from configs.config import Config
@@ -10,22 +9,20 @@ from httpd_log.session import SessionAnalyzer
 import time
 from datetime import timedelta
 import sys
-from utils import DATA_DIR
 
 
 class Workflow:
     def __init__(self, start_time, end_time, log_folder, config):
         self.is_server = False
-        if log_folder == "/var/log/httpd" and os.path.exists(log_folder):
+        if log_folder == "/var/log/httpd/" and os.path.exists(log_folder):
             logging.info("running on server")
             self.is_server = True
 
         gap_hours = 24
-        if tolerant_time(
-            end_time - start_time, timedelta(hours=config.time["eager_gap"])
-        ):
+        true_gap = end_time - start_time
+        if tolerant_time(true_gap, timedelta(hours=config.time["eager_gap"])):
             # if far
-            gap_hours = config.time["eager_gap"]
+            gap_hours = true_gap
 
         self.parser = HttpdLogParser(
             start_time, end_time, log_folder, gap_hours
@@ -48,8 +45,9 @@ class Workflow:
             session_result = analyzer.run()
             if analyzer.is_full:
                 write_last_eager(session["range"][1])
+                if self.is_server:
+                    analyzer.copy_to_server_dir()
             if self.is_server:
-                analyzer.copy_to_server_dir()
                 self.mailing(session_result["content"])
 
     def mailing(self, content):
@@ -124,7 +122,7 @@ def time_is_ok(config, last_datetime):
 def server():
     logging.info("starting logcheck server")
     config = Config()
-    log_dir = config.httpd["log_dir"]
+    log_dir = "/var/log/httpd/"
     first = True
     while 1:
         eager_last = read_last_eager()

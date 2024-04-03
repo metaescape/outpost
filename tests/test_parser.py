@@ -40,29 +40,41 @@ class TestParser(unittest.TestCase):
             (
                 datetime.datetime(2024, 3, 1, 8, 0),
                 datetime.datetime(2024, 3, 2, 8, 0),
+                True,
             ),
             (
                 datetime.datetime(2024, 3, 2, 8, 0),
                 datetime.datetime(2024, 3, 3, 8, 0),
+                True,
             ),
             (
                 datetime.datetime(2024, 3, 3, 8, 0),
                 datetime.datetime(2024, 3, 3, 12, 0),
+                False,
             ),
         ]
         self.assertEqual(split_sessions, excepted_sessions)
 
         start_time = datetime.datetime(2024, 3, 30, 8, 0)
-        end_time = datetime.datetime(2024, 3, 31, 12, 0)
+        end_time = datetime.datetime(2024, 3, 31, 8, 0)
         split_sessions = split_session(start_time, end_time)
         excepted_sessions = [
             (
                 datetime.datetime(2024, 3, 30, 8, 0),
                 datetime.datetime(2024, 3, 31, 8, 0),
+                True,
             ),
+        ]
+        self.assertEqual(split_sessions, excepted_sessions)
+
+        start_time = datetime.datetime(2024, 3, 30, 8, 0)
+        end_time = datetime.datetime(2024, 3, 31, 4, 0)
+        split_sessions = split_session(start_time, end_time)
+        excepted_sessions = [
             (
-                datetime.datetime(2024, 3, 31, 8, 0),
-                datetime.datetime(2024, 3, 31, 12, 0),
+                datetime.datetime(2024, 3, 30, 8, 0),
+                datetime.datetime(2024, 3, 31, 4, 0),
+                False,
             ),
         ]
         self.assertEqual(split_sessions, excepted_sessions)
