@@ -60,7 +60,7 @@ class Workflow:
         self.mail_content = []
 
 
-def tolerant_time(timedelta1, timedelta2, tolerance=0.5):
+def tolerant_time(timedelta1, timedelta2, tolerance=1):
     return abs(timedelta1 - timedelta2) < timedelta(hours=tolerance)
 
 
