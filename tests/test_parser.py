@@ -5,8 +5,10 @@ from httpd_log.parser import (
     HttpdLogParser,
     str2datetime,
     datetime2str,
+    tolerant_time,
 )
 import datetime
+from datetime import timedelta
 
 
 class TestParser(unittest.TestCase):
@@ -137,6 +139,15 @@ class TestParser(unittest.TestCase):
         test_string = "2024-01-31T12:49:43"
         expected_datetime = datetime.datetime(2024, 1, 31, 12, 49, 43)
         self.assertEqual(str2datetime(test_string), expected_datetime)
+
+    def test_tolerant_time(self):
+        start_time = datetime.datetime(2024, 3, 30, 8, 0)
+        end_time = datetime.datetime(2024, 3, 31, 8, 0)
+        gap = timedelta(hours=23.7)
+        self.assertTrue(tolerant_time(end_time - start_time, gap))
+        self.assertTrue(
+            not tolerant_time(end_time - start_time + timedelta(hours=1), gap)
+        )
 
 
 if __name__ == "__main__":

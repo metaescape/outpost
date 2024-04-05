@@ -1,6 +1,7 @@
 import datetime
 import os
 import logging
+from datetime import timedelta
 
 
 class HttpdLogParser:
@@ -157,7 +158,9 @@ def split_session(start_time, end_time, hours=24):
         if end > end_time:
             end = end_time
             is_full = False
-        session_list.append((start, end, is_full))
+        # 3 minutes
+        if end - start > datetime.timedelta(minutes=3):
+            session_list.append((start, end, is_full))
         start = end
     return session_list
 
@@ -181,3 +184,7 @@ def str2datetime(string, httpd_default=False):
     if httpd_default:
         return datetime.datetime.strptime(string, "%d/%b/%Y:%H:%M:%S")
     return datetime.datetime.strptime(string, "%Y-%m-%dT%H:%M:%S")
+
+
+def tolerant_time(timedelta1: timedelta, timedelta2: timedelta, tolerance=1):
+    return abs(timedelta1 - timedelta2) < timedelta(hours=tolerance)

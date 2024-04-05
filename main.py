@@ -3,7 +3,12 @@ import os
 import datetime
 import logging
 from mail.mail import send_mail
-from httpd_log.parser import HttpdLogParser, datetime2str, str2datetime
+from httpd_log.parser import (
+    HttpdLogParser,
+    datetime2str,
+    str2datetime,
+    tolerant_time,
+)
 from configs.config import Config
 from httpd_log.session import SessionAnalyzer
 import time
@@ -21,8 +26,8 @@ class Workflow:
         gap_hours = 24
         true_gap = end_time - start_time
         if tolerant_time(true_gap, timedelta(hours=config.time["eager_gap"])):
-            # if far
-            gap_hours = true_gap
+            # convert to hours
+            gap_hours = true_gap.total_seconds() / 3600
 
         logging.info(f"gap hours is set to {gap_hours} hours")
 
@@ -60,10 +65,6 @@ class Workflow:
         send_mail(self.config, "".join(self.mail_content))
         self.config.mail["subject"] = original_subject
         self.mail_content = []
-
-
-def tolerant_time(timedelta1: timedelta, timedelta2: timedelta, tolerance=1):
-    return abs(timedelta1 - timedelta2) < timedelta(hours=tolerance)
 
 
 def eager_fetch(log_dir, config):

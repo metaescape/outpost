@@ -1,9 +1,8 @@
 import unittest
 from unittest.mock import patch, mock_open
-from main import Workflow, time_is_ok, tolerant_time
+from main import Workflow, time_is_ok
 from configs.config import Config
 import datetime
-from datetime import timedelta
 
 
 class TestMain(unittest.TestCase):
@@ -32,15 +31,6 @@ class TestMain(unittest.TestCase):
         self.assertTrue(
             not expect_true
         )  # if time is between 8-9 this will be true
-
-    def test_tolerant_time(self):
-        start_time = datetime.datetime(2024, 3, 30, 8, 0)
-        end_time = datetime.datetime(2024, 3, 31, 8, 0)
-        gap = timedelta(hours=23.7)
-        self.assertTrue(tolerant_time(end_time - start_time, gap))
-        self.assertTrue(
-            not tolerant_time(end_time - start_time + timedelta(hours=1), gap)
-        )
 
     @patch("builtins.open", new_callable=mock_open)
     @patch("main.write_last_eager")  # 假设这是你需要模拟的额外函数
