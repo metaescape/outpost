@@ -11,6 +11,11 @@ class HttpdLogParser:
         self.start_time = start_time
         self.end_time = end_time
         self.session_list = split_session(start_time, end_time, hours=hours)
+        logging.info(f"split into {len(self.session_list)} sessions:")
+        for k, (start, end, is_full) in enumerate(self.session_list):
+            logging.info(
+                f"session {k}: {datetime2str(start)} - {datetime2str(end)} "
+            )
 
     def parse_loglines_to_sessions(self):
         loglines = self.parse_loglines_after_datetime()
@@ -50,7 +55,7 @@ class HttpdLogParser:
                     if log_entry and log_entry["datetime"] > self.start_time:
                         loglines.append(log_entry)
         logging.info(
-            f"{len(loglines)} form {self.start_time} to {self.end_time} had been parsed"
+            f"parsed {len(loglines)} lines log between {self.start_time} and {self.end_time} "
         )
         return loglines[::-1]
 

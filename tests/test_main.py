@@ -39,7 +39,7 @@ class TestMain(unittest.TestCase):
         gap = timedelta(hours=23.7)
         self.assertTrue(tolerant_time(end_time - start_time, gap))
         self.assertTrue(
-            not tolerant_time(end_time - start_time - timedelta(hours=1), gap)
+            not tolerant_time(end_time - start_time + timedelta(hours=1), gap)
         )
 
     @patch("builtins.open", new_callable=mock_open)

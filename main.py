@@ -15,7 +15,7 @@ class Workflow:
     def __init__(self, start_time, end_time, log_folder, config):
         self.is_server = False
         if log_folder == "/var/log/httpd/" and os.path.exists(log_folder):
-            logging.info("running on server")
+            logging.info("Workflow: start on server")
             self.is_server = True
 
         gap_hours = 24
@@ -23,6 +23,8 @@ class Workflow:
         if tolerant_time(true_gap, timedelta(hours=config.time["eager_gap"])):
             # if far
             gap_hours = true_gap
+
+        logging.info(f"gap hours is set to {gap_hours} hours")
 
         self.parser = HttpdLogParser(
             start_time, end_time, log_folder, gap_hours
@@ -60,7 +62,7 @@ class Workflow:
         self.mail_content = []
 
 
-def tolerant_time(timedelta1, timedelta2, tolerance=1):
+def tolerant_time(timedelta1: timedelta, timedelta2: timedelta, tolerance=1):
     return abs(timedelta1 - timedelta2) < timedelta(hours=tolerance)
 
 
@@ -120,7 +122,7 @@ def time_is_ok(config, last_datetime):
 
 
 def server():
-    logging.info("starting logcheck server")
+    logging.info("starting outpost server")
     config = Config()
     log_dir = "/var/log/httpd/"
     first = True
@@ -130,10 +132,8 @@ def server():
             # loc 也用来额外保存一些信息，例如上次 eager_fetch 的时间
             logging.info(f"starting eager fetch with eager_last {eager_last}")
             try:
-                eager_last = eager_fetch(log_dir, config)
-                logging.info(
-                    f"eager fetch end with new eager_last {eager_last}"
-                )
+                fetch_end = eager_fetch(log_dir, config)
+                logging.info(f"eager fetch end at {fetch_end}")
             except Exception as e:
                 exc_type, exc_value, exc_traceback = sys.exc_info()
 
