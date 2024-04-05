@@ -122,7 +122,7 @@ class SessionAnalyzer:
         valid_access_record = []
         normal_access = self.session_data["normal_access"]
         for ip, access_page, from_link, date in normal_access:
-            country, city = self.data_insights.get_location(ip)
+            country, city = self.get_location(ip)
 
             freq = "初次"
             if (
@@ -140,6 +140,13 @@ class SessionAnalyzer:
                 self.update_pages_loc(country, city, access_page)
 
         self.update_visit_count(valid_access_record)
+
+    def get_location(self, ip):
+        if ip in self.session_data["ip2location"]:
+            country, city = self.session_data["ip2location"][ip][0].split(":")
+        else:
+            country, city = self.data_insights.get_location(ip)
+        return country, city
 
     def update_ip2location(self, ip, country, city, date: str):
         if ip not in self.session_data["ip2location"]:

@@ -6,6 +6,7 @@ import logging
 from utils import setup_logging
 from httpd_log.parser import str2datetime
 from utils import DATA_DIR
+from typing import Optional, Tuple
 
 setup_logging()
 
@@ -51,7 +52,7 @@ class WebTrafficInsights:
     def __contains__(self, ip):
         return ip in self.ip2location
 
-    def get_from_cache(self, ip):
+    def get_from_cache(self, ip) -> Optional[Tuple[str, str]]:
         # check if the ip is in the ip2location and is not out of date and
         # the location is not "地球"
         if ip not in self.ip2location:
@@ -65,7 +66,10 @@ class WebTrafficInsights:
         location = self.ip2location[ip][0]
         if "地球" in location or "猎户" in location:
             return None
-        return tuple(location.split(":"))
+        if len(location.split(":")) != 2:
+            return None
+        country, city = location.split(":")
+        return country, city
 
     def get_location(self, ip):
         cache_result = self.get_from_cache(ip)
@@ -142,3 +146,4 @@ if __name__ == "__main__":
     # convert_old_json() # only need to run once
     geo = WebTrafficInsights()
     print(geo.get_location("153.127.35.18"))
+    print(geo.get_location("182.234.71.162"))

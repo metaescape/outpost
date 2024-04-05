@@ -140,6 +140,17 @@ class TestSessionIntegration(unittest.TestCase):
             [f"<p> {datetime2str(self.end_time)} 7:4 / pv:uv </p>\n"],
         )
 
+    def test_get_location(self):
+        self.analyzer.session_data = {
+            "ip2location": {
+                "129.1.1.1": ["Country:City", 1, "2022-01-01"],
+            },
+        }
+
+        self.assertEqual(
+            self.analyzer.get_location("129.1.1.1"), ("Country", "City")
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
