@@ -52,6 +52,19 @@ class WebTrafficInsights:
     def __contains__(self, ip):
         return ip in self.ip2location
 
+    def get_location(self, ip):
+        cache_result = self.get_from_cache(ip)
+        if cache_result:
+            return cache_result
+
+        try:
+            return self.get_location_from_server(ip)
+        except Exception as e:
+            logging.error(
+                f"Failed to get location for {ip}, using default location."
+            )
+            return "地球", "地球"
+
     def get_from_cache(self, ip) -> Optional[Tuple[str, str]]:
         # check if the ip is in the ip2location and is not out of date and
         # the location is not "地球"
@@ -70,19 +83,6 @@ class WebTrafficInsights:
             return None
         country, city = location.split(":")
         return country, city
-
-    def get_location(self, ip):
-        cache_result = self.get_from_cache(ip)
-        if cache_result:
-            return cache_result
-
-        try:
-            return self.get_location_from_server(ip)
-        except Exception as e:
-            logging.error(
-                f"Failed to get location for {ip}, using default location."
-            )
-            return "地球", "地球"
 
     def get_location_from_server(self, ip):
         response = requests.get(
@@ -147,3 +147,4 @@ if __name__ == "__main__":
     geo = WebTrafficInsights()
     print(geo.get_location("153.127.35.18"))
     print(geo.get_location("182.234.71.162"))
+    print(geo.get_location("171.113.166.181"))
