@@ -9,6 +9,8 @@ from httpd_log.parser import (
     str2datetime,
     tolerant_time,
 )
+import importlib
+import configs.config
 from configs.config import Config
 from httpd_log.session import SessionAnalyzer
 import time
@@ -122,9 +124,17 @@ def time_is_ok(config, last_datetime):
     )
 
 
+def dynamic_import_config():
+    """
+    重新加载配置文件，可以在运行时修改配置文件
+    """
+    importlib.reload(configs.config)
+    return Config()
+
+
 def server():
     logging.info("starting outpost server")
-    config = Config()
+    config = dynamic_import_config()
     log_dir = "/var/log/httpd/"
     first = True
     while 1:
