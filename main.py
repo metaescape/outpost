@@ -39,13 +39,6 @@ class Workflow:
 
         self.config = config
         self.end_time = end_time
-        self.setup()
-
-    def setup(self):
-        """
-        read persistent data: pages_loc.json
-        """
-        self.mail_content = []
 
     def run(self):
         self.sessions = self.parser.parse_loglines_to_sessions()
@@ -57,15 +50,14 @@ class Workflow:
                 if self.is_server:
                     analyzer.copy_to_server_dir()
             if self.is_server:
-                self.mailing(session_result["content"])
+                mail_content = analyzer.read_mails(
+                    days=self.config.mail["days"]
+                )
+                self.mailing(mail_content)
 
-    def mailing(self, content):
-        self.mail_content.extend(content)
+    def mailing(self, mail_content):
         logging.info("sending mail ...")
-        original_subject = self.config.mail["subject"]
-        self.config.mail["subject"] = f"eager fetch report"
-        send_mail(self.config, "".join(self.mail_content))
-        self.config.mail["subject"] = original_subject
+        send_mail(self.config, "".join(mail_content))
         self.mail_content = []
 
 
@@ -112,7 +104,6 @@ def time_in_range(start, end, x=None):
 
 
 def time_is_ok(config, last_datetime):
-    full_gap = config.time["full_gap"]
     eager_gap = config.time["eager_gap"]
     start_hour, start_minute = map(int, config.time["start"].split(":"))
     end_hour, end_minute = map(int, config.time["end"].split(":"))

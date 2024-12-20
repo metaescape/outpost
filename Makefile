@@ -36,3 +36,6 @@ view:
 
 temp-push-json:
 	rsync -avz ~/codes/ranger/outpost/.vscode/*.json root@tc:~/outpost/.vscode/
+
+config:
+	rsync -avz ~/codes/ranger/outpost/configs/config.py root@tc:~/outpost/configs/

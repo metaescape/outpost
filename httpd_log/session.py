@@ -6,6 +6,7 @@ from collections import defaultdict, Counter
 import os
 import logging
 import subprocess
+from datetime import timedelta
 
 
 class SessionAnalyzer:
@@ -188,6 +189,23 @@ class SessionAnalyzer:
         self.data_insights.merge_page_locations(
             self.session_data["pages"], self.session_data["locations"]
         )
+
+    def read_mails(self, days):
+        mail_dir = os.path.join(PORJ_DIR, "logs", "mails")
+        mail_paths = []
+        for i in range(days):
+            date = datetime2str(
+                self.end_time - timedelta(days=i), only_date=True
+            )
+            mail_path = os.path.join(mail_dir, f"{date}.txt")
+            mail_paths.append(mail_path)
+
+        mail_content = []
+        for mail_path in mail_paths:
+            if os.path.exists(mail_path):
+                with open(mail_path, "r") as f:
+                    mail_content.extend(f.readlines())
+        return mail_content
 
     def write_content(self):
 
