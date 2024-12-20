@@ -17,6 +17,8 @@ import time
 from datetime import timedelta
 import sys
 
+CHECK_GAP = 10  # 10 分钟检查一次
+
 
 class Workflow:
     def __init__(self, start_time, end_time, log_folder, config):
@@ -50,16 +52,20 @@ class Workflow:
                 if self.is_server:
                     analyzer.copy_to_server_dir()
             if self.is_server:
-                if not time_is_ok(self.config, session["range"][1]):
-                    self.mailing_eager_test(session_result["content"])
+                # if not time_is_ok(self.config, session["range"][1]): # 取消注释用于测试
+                #     self.mailing_eager_test(session_result["content"])
                 mail_last = read_last(type="mail")
-                if session["range"][1] > mail_last + timedelta(
-                    days=self.config.mail["days"]
-                ):
+                next_send_time = (
+                    mail_last
+                    + timedelta(days=self.config.mail["days"])
+                    - timedelta(minutes=CHECK_GAP + 1)
+                )
+                logging.info("next mail time is %s", next_send_time)
+                if session["range"][1] > next_send_time:
+                    write_last(session["range"][1], type="mail")
                     mail_content = analyzer.read_mails(
                         days=self.config.mail["days"]
                     )
-                    write_last(session["range"][1], type="mail")
                     self.mailing(mail_content)
 
     def mailing(self, mail_content):
@@ -175,7 +181,7 @@ def server():
                     f"An error occurred on line {line_number}: {str(e)}"
                 )
             first = False
-        time.sleep(60 * 10)  # 10 分钟检查一次
+        time.sleep(60 * CHECK_GAP)
 
 
 def local_test():
