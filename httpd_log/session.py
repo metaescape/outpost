@@ -205,6 +205,7 @@ class SessionAnalyzer:
             if os.path.exists(mail_path):
                 with open(mail_path, "r") as f:
                     mail_content.extend(f.readlines())
+                mail_content.append("*" * 15 + "\n")
         return mail_content
 
     def write_content(self):
