@@ -201,12 +201,21 @@ class SessionAnalyzer:
             mail_paths.append(mail_path)
 
         mail_content = []
+        cnt = Counter()
         for mail_path in mail_paths:
             if os.path.exists(mail_path):
                 with open(mail_path, "r") as f:
-                    mail_content.extend(f.readlines())
+                    for line in f.readlines():
+                        if "访问了" in line:
+                            html = line.split(" ")[-2]
+                            cnt.update([html])
+                        mail_content.append(line)
                 mail_content.append("*" * 15 + "\n")
-        return mail_content
+
+        most_visited = []
+        for k, v in cnt.most_common():
+            most_visited.append(f"{k}: {v} 次")
+        return most_visited + mail_content
 
     def write_content(self):
 
