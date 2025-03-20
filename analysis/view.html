@@ -144,9 +144,9 @@
             .split("\n")
             .filter((line) => line.trim() !== "");
 
-          const dates = [];
-          const visits = [];
-          const uniques = [];
+          let dates = [];
+          let visits = [];
+          let uniques = [];
 
           trafficData.forEach((line) => {
             const [date, visit, unique] = JSON.parse(line);
@@ -163,7 +163,11 @@
           document.getElementById("total").innerText = totalInfo;
 
           const ctx = document.getElementById("visits").getContext("2d");
-
+          // last 30 days
+          dates = dates.slice(-30);
+          visits = visits.slice(-30);
+          uniques = uniques.slice(-30);
+          console.log(dates, visits, uniques);
           new Chart(ctx, {
             type: "line",
             data: {

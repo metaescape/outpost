@@ -23,7 +23,8 @@ push-dir:
 push-and-restart:
 	set -x
 	ssh tc 'systemctl stop outpost'
-	scp root@tc:~/outpost/analysis/*.json ~/codes/ranger/outpost/
+	scp root@tc:~/outpost/analysis/*.json* ~/codes/ranger/outpost/analysis/
+	scp root@tc:~/outpost/*.json ~/codes/ranger/outpost/
 	rsync -avz --no-perms --no-owner --no-group --exclude=loghist.txt --exclude=".git/"\
 		--exclude="__pycache__/" --exclude="*.json*" --exclude="*.txt" --exclude="*.log"\
 		--exclude="*.mypy_cache" --exclude="logs/" \

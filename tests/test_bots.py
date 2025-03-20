@@ -57,6 +57,10 @@ class TestBotsHunter(unittest.TestCase):
             "HTTP Banner Detection (https://security.ipip.net)",
             "com.apple.WebKit.Networking/8614.4.6.0.6 CFNetwork/1404.0.5 Darwin/22.3.0",
             '" "Mozilla/5.0 (compatible; Dataprovider.com)"\n',
+            "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; ChatGPT-User/1.0; +https://openai.com/bot",
+            "Mozilla/5.0 (compatible; AhrefsBot/7.0; +http://ahrefs.com/robot/)",
+            "Mozilla/5.0 (compatible; Miniflux/2.2.3; +https://miniflux.app)",
+            "Mozilla/5.0 (compatible; Miniflux/2.2.3; +https://my.xyz)",
         ]
 
         self.assertEqual(
@@ -70,11 +74,25 @@ class TestBotsHunter(unittest.TestCase):
             BotsHunter.extract_full_url(test_cases[2]),
             "https://security.ipip.net",
         )
-        self.assertEqual(BotsHunter.extract_full_url(test_cases[3]), None)
-
+        self.assertEqual(
+            BotsHunter.extract_full_url(test_cases[3]),
+            "com.apple.WebKit.Networking/8614.4.6.0.6",
+        )
         self.assertEqual(
             BotsHunter.extract_full_url(test_cases[4]), "Dataprovider.com"
         )
+        self.assertEqual(
+            BotsHunter.extract_full_url(test_cases[5]),
+            "https://openai.com/bot",
+        )
+        self.assertEqual(
+            BotsHunter.extract_full_url(test_cases[6]),
+            "http://ahrefs.com/robot",
+        )
+        self.assertEqual(
+            BotsHunter.extract_full_url(test_cases[7]), "https://miniflux.app"
+        )
+        self.assertEqual(BotsHunter.extract_full_url(test_cases[8]), None)
 
     def test_get_first_word_with_key(self):
         # Test the get_first_word_with_key function

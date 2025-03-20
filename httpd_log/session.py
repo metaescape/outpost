@@ -214,7 +214,7 @@ class SessionAnalyzer:
 
         most_visited = []
         for k, v in cnt.most_common():
-            most_visited.append(f"{k}: {v} 次")
+            most_visited.append(f"<p>{k}: {v} 次</p>")
         return most_visited + mail_content
 
     def write_content(self):

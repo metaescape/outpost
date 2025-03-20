@@ -189,7 +189,7 @@ class BotsHunter:
     def extract_full_url(agent_summary):
         # Use regular expression to match any word that contains '.com', '.net', etc., and possibly followed by paths or protocols
         match = re.search(
-            r"\b(\w+://)?[\w\.-]+\.(com|net|org|io|cn)[\/\w\.-]*\b",
+            r"\b(?:https?://)?[\w\.-]+\.(com|net|org|io|cn|app)[\/\w\.-]*\b",
             agent_summary,
         )
         if match:
