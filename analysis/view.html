@@ -118,7 +118,10 @@
     <div id="protectedContent" style="display: none">
       <p id="total"></p>
 
-      <div style="max-height: 30vh">
+      <div style="max-height: 25vh">
+        <canvas id="uniques"></canvas>
+      </div>
+      <div style="max-height: 25vh">
         <canvas id="visits"></canvas>
       </div>
 
@@ -167,27 +170,19 @@
           dates = dates.slice(-30);
           visits = visits.slice(-30);
           uniques = uniques.slice(-30);
-          console.log(dates, visits, uniques);
+          // Chart for visits
           new Chart(ctx, {
             type: "line",
             data: {
               labels: dates,
               datasets: [
                 {
-                  label: "ips",
+                  label: "Visits",
                   data: visits,
-
-                  fill: false,
-                },
-                {
-                  label: "uips",
-                  data: uniques,
-
                   fill: false,
                 },
               ],
             },
-
             options: {
               responsive: true,
               maintainAspectRatio: false,
@@ -202,6 +197,42 @@
                 title: {
                   display: true,
                   text: "Visits per Day",
+                },
+              },
+            },
+          });
+
+          const ctxUniques = document
+            .getElementById("uniques")
+            .getContext("2d");
+          // Chart for uniques
+          new Chart(ctxUniques, {
+            type: "line",
+            data: {
+              labels: dates,
+              datasets: [
+                {
+                  label: "Uniques",
+                  data: uniques,
+                  fill: false,
+                  borderColor: "lightcoral",
+                },
+              ],
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              scales: {
+                x: {
+                  ticks: {
+                    display: false, // Hide x-labels on x-ticks
+                  },
+                },
+              },
+              plugins: {
+                title: {
+                  display: true,
+                  text: "Uniques per Day",
                 },
               },
             },
