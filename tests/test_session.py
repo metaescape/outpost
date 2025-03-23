@@ -151,6 +151,15 @@ class TestSessionIntegration(unittest.TestCase):
             self.analyzer.get_location("129.1.1.1"), ("Country", "City")
         )
 
+    def test_read_mails(self):
+        end = "2024-03-31 12:00:00"
+        self.analyzer.end_time = datetime.datetime.strptime(
+            end, "%Y-%m-%d %H:%M:%S"
+        )
+        content = self.analyzer.read_mails(3)
+        assert "28" not in content[0]
+        assert "5" in content[0]
+
 
 if __name__ == "__main__":
     unittest.main()

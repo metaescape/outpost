@@ -33,14 +33,12 @@ class TestMain(unittest.TestCase):
         )  # if time is between 8-9 this will be true
 
     @patch("builtins.open", new_callable=mock_open)
-    @patch("main.write_last_eager")  # 假设这是你需要模拟的额外函数
     @patch("os.path.join", return_value="dummy_path")
     @patch("json.dump")
     def test_write_back(
         self,
         mock_json_dump,
         mock_path_join,
-        mock_write_last_eager,
         mock_file_open,
     ):
         return
@@ -68,7 +66,7 @@ class TestMain(unittest.TestCase):
         )
 
         # 验证 write_last_eager 和其他需要模拟的函数是否被调用
-        mock_write_last_eager.assert_called_once_with("dummy_session_end")
+        # mock_write_last_eager.assert_called_once_with("dummy_session_end")
 
 
 if __name__ == "__main__":
