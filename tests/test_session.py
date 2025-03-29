@@ -157,8 +157,10 @@ class TestSessionIntegration(unittest.TestCase):
             end, "%Y-%m-%d %H:%M:%S"
         )
         content = self.analyzer.read_mails(3)
-        assert "28" not in content[0]
-        assert "5" in content[0]
+        # print(content)
+        assert "28" not in content[1]
+        assert "5" not in content[1]
+        assert "24" in content[1]
 
 
 if __name__ == "__main__":

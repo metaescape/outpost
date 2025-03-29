@@ -201,7 +201,7 @@ class SessionAnalyzer:
             mail_paths.append(mail_path)
 
         mail_content = []
-        cnt = Counter()
+        cnt = defaultdict(set)
         for mail_path in mail_paths:
             if os.path.exists(mail_path):
                 with open(mail_path, "r") as f:
@@ -209,14 +209,17 @@ class SessionAnalyzer:
                         if "访问了" in line:
                             elements = line.split(" ")
                             ip, html = elements[-6], elements[-2]
-                            cnt.update([(ip, html)])
+                            cnt[html].add(ip)
                         mail_content.append(line)
                 mail_content.append("*" * 15 + "\n")
 
+        cnt_html = [(len(cnt[html]), html) for html in cnt]
+        cnt_html.sort(reverse=True)
         most_visited = []
-        for k, v in cnt.most_common():
-            most_visited.append(f"<p>{k[1]}: {v} 次</p>")
-        return most_visited + mail_content
+        for cnt, html in cnt_html[:10]:
+            most_visited.append(f"<p>{html}: {cnt} 次</p>")
+        header = [f"<p>页面独立访问次数前 10:</p>\n"]
+        return header + most_visited + mail_content
 
     def write_content(self):
 
